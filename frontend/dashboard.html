@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Intelligent LMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f9fafb;
+            color: #333333;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-details {
+            text-align: right;
+        }
+
+        .user-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #1f2937;
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-transform: capitalize;
+        }
+
+        .logout-button {
+            padding: 0.5rem 1rem;
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .logout-button:hover {
+            background-color: #dc2626;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .welcome-section {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .welcome-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-subtitle {
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-card {
+            background-color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+
+        .status-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-card p {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-connected {
+            background-color: #10b981;
+        }
+
+        .status-pending {
+            background-color: #f59e0b;
+        }
+
+        .features-section {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+
+        .features-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background-color: #f9fafb;
+        }
+
+        .feature-card h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-button {
+            padding: 0.5rem 1rem;
+            background-color: #e5e7eb;
+            color: #6b7280;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: not-allowed;
+            width: 100%;
+        }
+
+        .feature-button.available {
+            background-color: #2563eb;
+            color: white;
+            cursor: pointer;
+        }
+
+        .feature-button.available:hover {
+            background-color: #1d4ed8;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 50%;
+            border-top-color: #2563eb;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background-color: #fef2f2;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            border: 1px solid #fecaca;
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .modal-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-button:hover {
+            color: #374151;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .upload-section {
+            margin-bottom: 1rem;
+        }
+
+        .file-input-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .file-input-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .file-input-label:hover {
+            border-color: #2563eb;
+            background-color: #eff6ff;
+        }
+
+        .file-input-label.dragover {
+            border-color: #2563eb;
+            background-color: #eff6ff;
+        }
+
+        #file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-text {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .file-preview {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background-color: #f3f4f6;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .file-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #1f2937;
+            font-size: 0.875rem;
+        }
+
+        .file-size {
+            color: #6b7280;
+            font-size: 0.75rem;
+        }
+
+        .remove-file-button {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .remove-file-button:hover {
+            background-color: #dc2626;
+        }
+
+        .upload-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .upload-button {
+            padding: 0.75rem 1.5rem;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .upload-button:hover:not(:disabled) {
+            background-color: #1d4ed8;
+        }
+
+        .upload-button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .upload-progress {
+            margin-top: 1rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #2563eb;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        /* Files List Styles */
+        .files-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+        }
+
+        .file-item-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-item-name {
+            font-weight: 500;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+
+        .file-item-meta {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .file-item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .file-action-button {
+            padding: 0.25rem 0.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .delete-button {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .delete-button:hover {
+            background-color: #dc2626;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .user-info {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .welcome-section,
+            .features-section {
+                padding: 1.5rem;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 1rem;
+            }
+
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .file-item-actions {
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">Intelligent LMS</div>
+            <div class="user-info">
+                <div class="user-details">
+                    <div class="user-name" id="user-name">Loading...</div>
+                    <div class="user-role" id="user-role">Loading...</div>
+                </div>
+                <button class="logout-button" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div id="error-message" class="error-message" style="display: none;"></div>
+
+        <section class="welcome-section">
+            <h1 class="welcome-title">Welcome to Your Learning Dashboard</h1>
+            <p class="welcome-subtitle">Your AI-powered learning companion is ready to help you succeed.</p>
+            
+            <div class="status-grid">
+                <div class="status-card">
+                    <h3><span class="status-indicator status-connected"></span>Authentication</h3>
+                    <p>Successfully logged in and authenticated</p>
+                </div>
+                <div class="status-card">
+                    <h3><span class="status-indicator status-connected"></span>AWS Services</h3>
+                    <p>Connected to cloud infrastructure</p>
+                </div>
+                <div class="status-card">
+                    <h3><span class="status-indicator status-pending"></span>AI Assistant</h3>
+                    <p>Ready for file uploads and questions</p>
+                </div>
+                <div class="status-card">
+                    <h3><span class="status-indicator status-pending"></span>Learning Profile</h3>
+                    <p>Will be built as you interact with the system</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="features-section">
+            <h2 class="features-title">Available Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h4>📚 Upload Study Notes</h4>
+                    <p>Upload your study materials in TXT format. The AI will analyze and index them for intelligent question answering.</p>
+                    <button class="feature-button available" onclick="showFileUpload()">Upload Notes</button>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🤖 AI Doubt Resolution</h4>
+                    <p>Ask questions about your uploaded materials and get intelligent answers powered by Amazon Bedrock AI.</p>
+                    <button class="feature-button">Coming in Task 4</button>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🎤 Voice Interviews</h4>
+                    <p>Practice with AI-powered voice interviews that analyze your responses and provide personalized feedback.</p>
+                    <button class="feature-button">Coming in Task 10</button>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>📝 Adaptive Quizzes</h4>
+                    <p>Take personalized quizzes that adapt to your knowledge level and help identify areas for improvement.</p>
+                    <button class="feature-button">Coming in Task 7</button>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🎯 Learning Paths</h4>
+                    <p>Get personalized study sequences and recommendations based on your performance and learning gaps.</p>
+                    <button class="feature-button">Coming in Task 8</button>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>👥 Peer Learning Network</h4>
+                    <p>Connect with peers who can help with your specific learning challenges and collaborate on difficult topics.</p>
+                    <button class="feature-button">Coming in Task 9</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- File Upload Modal -->
+        <div id="file-upload-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Upload Study Notes</h3>
+                    <button class="close-button" onclick="hideFileUpload()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="upload-section">
+                        <div class="file-input-container">
+                            <input type="file" id="file-input" accept=".txt" onchange="handleFileSelect(event)">
+                            <label for="file-input" class="file-input-label">
+                                <span class="upload-icon">📁</span>
+                                <span class="upload-text">Choose TXT file or drag and drop</span>
+                            </label>
+                        </div>
+                        
+                        <div id="file-preview" class="file-preview" style="display: none;">
+                            <div class="file-info">
+                                <span class="file-name" id="selected-file-name"></span>
+                                <span class="file-size" id="selected-file-size"></span>
+                            </div>
+                            <button class="remove-file-button" onclick="clearFileSelection()">Remove</button>
+                        </div>
+                        
+                        <div class="upload-actions">
+                            <button id="upload-button" class="upload-button" onclick="uploadFile()" disabled>
+                                <span class="loading" id="upload-loading" style="display: none;"></span>
+                                Upload File
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="upload-progress" class="upload-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-text" id="progress-text">Uploading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Files List Section -->
+        <section id="files-section" class="features-section" style="display: none;">
+            <h2 class="features-title">Your Uploaded Files</h2>
+            <div id="files-list" class="files-list">
+                <!-- Files will be loaded here -->
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'https://djinft5ljj.execute-api.us-east-1.amazonaws.com/dev';
+
+        // Authentication check
+        function checkAuthentication() {
+            const token = localStorage.getItem('access_token');
+            const userInfo = localStorage.getItem('user_info');
+            
+            if (!token || !userInfo) {
+                redirectToLogin();
+                return false;
+            }
+            
+            try {
+                // Basic token validation
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const currentTime = Math.floor(Date.now() / 1000);
+                
+                if (payload.exp <= currentTime) {
+                    // Token expired
+                    localStorage.clear();
+                    redirectToLogin();
+                    return false;
+                }
+                
+                // Display user information
+                const user = JSON.parse(userInfo);
+                document.getElementById('user-name').textContent = user.email;
+                document.getElementById('user-role').textContent = user.role;
+                
+                return true;
+                
+            } catch (error) {
+                console.error('Token validation error:', error);
+                localStorage.clear();
+                redirectToLogin();
+                return false;
+            }
+        }
+
+        function redirectToLogin() {
+            window.location.href = 'index.html';
+        }
+
+        function logout() {
+            // Clear all stored authentication data
+            localStorage.clear();
+            
+            // Show logout message briefly
+            showError('Logged out successfully. Redirecting...');
+            
+            // Redirect to login page
+            setTimeout(() => {
+                redirectToLogin();
+            }, 1000);
+        }
+
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
+        }
+
+        // Test API connectivity
+        async function testAPIConnectivity() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/hello`);
+                const result = await response.json();
+                
+                if (response.ok) {
+                    console.log('API connectivity test passed:', result);
+                } else {
+                    console.warn('API connectivity test failed:', result);
+                }
+            } catch (error) {
+                console.error('API connectivity test error:', error);
+                showError('Warning: Unable to connect to API services. Some features may not work properly.');
+            }
+        }
+
+        // File upload functionality
+        let selectedFile = null;
+
+        function showFileUpload() {
+            document.getElementById('file-upload-modal').style.display = 'flex';
+            loadUserFiles(); // Load existing files when modal opens
+        }
+
+        function hideFileUpload() {
+            document.getElementById('file-upload-modal').style.display = 'none';
+            clearFileSelection();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (!file.name.toLowerCase().endsWith('.txt')) {
+                    showError('Only TXT files are supported in this version');
+                    return;
+                }
+                
+                if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                    showError('File size must be less than 5MB');
+                    return;
+                }
+                
+                selectedFile = file;
+                showFilePreview(file);
+            }
+        }
+
+        function showFilePreview(file) {
+            const preview = document.getElementById('file-preview');
+            const fileName = document.getElementById('selected-file-name');
+            const fileSize = document.getElementById('selected-file-size');
+            const uploadButton = document.getElementById('upload-button');
+            
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            preview.style.display = 'flex';
+            uploadButton.disabled = false;
+        }
+
+        function clearFileSelection() {
+            selectedFile = null;
+            document.getElementById('file-input').value = '';
+            document.getElementById('file-preview').style.display = 'none';
+            document.getElementById('upload-button').disabled = true;
+            document.getElementById('upload-progress').style.display = 'none';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function uploadFile() {
+            if (!selectedFile) {
+                showError('Please select a file first');
+                return;
+            }
+
+            const uploadButton = document.getElementById('upload-button');
+            const uploadLoading = document.getElementById('upload-loading');
+            const uploadProgress = document.getElementById('upload-progress');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+
+            try {
+                // Show loading state
+                uploadButton.disabled = true;
+                uploadLoading.style.display = 'inline-block';
+                uploadProgress.style.display = 'block';
+                progressFill.style.width = '10%';
+                progressText.textContent = 'Reading file...';
+
+                // Read file content
+                const fileContent = await readFileAsBase64(selectedFile);
+                progressFill.style.width = '30%';
+                progressText.textContent = 'Uploading to server...';
+
+                // Prepare request
+                const token = localStorage.getItem('access_token');
+                const requestBody = {
+                    fileName: selectedFile.name,
+                    fileContent: fileContent.split(',')[1], // Remove data:text/plain;base64, prefix
+                    fileType: selectedFile.type || 'text/plain'
+                };
+
+                progressFill.style.width = '50%';
+                progressText.textContent = 'Processing...';
+
+                // Upload file
+                const response = await fetch(`${API_BASE_URL}/files`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                progressFill.style.width = '80%';
+                progressText.textContent = 'Finalizing...';
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    progressFill.style.width = '100%';
+                    progressText.textContent = 'Upload complete!';
+                    
+                    // Show success message
+                    showSuccess(`File "${result.fileName}" uploaded successfully! Extracted ${result.extractedConcepts.length} concepts.`);
+                    
+                    // Clear form and reload files
+                    setTimeout(() => {
+                        clearFileSelection();
+                        loadUserFiles();
+                    }, 1500);
+                    
+                } else {
+                    throw new Error(result.error || 'Upload failed');
+                }
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showError(`Upload failed: ${error.message}`);
+                
+                // Reset progress
+                uploadProgress.style.display = 'none';
+                
+            } finally {
+                // Reset button state
+                uploadButton.disabled = false;
+                uploadLoading.style.display = 'none';
+            }
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function loadUserFiles() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_BASE_URL}/files`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    displayUserFiles(result.files);
+                    
+                    // Show files section if user has files
+                    if (result.files.length > 0) {
+                        document.getElementById('files-section').style.display = 'block';
+                    }
+                } else {
+                    console.error('Failed to load files:', result.error);
+                }
+
+            } catch (error) {
+                console.error('Error loading files:', error);
+            }
+        }
+
+        function displayUserFiles(files) {
+            const filesList = document.getElementById('files-list');
+            
+            if (files.length === 0) {
+                filesList.innerHTML = '<p style="text-align: center; color: #6b7280;">No files uploaded yet. Upload your first study note to get started!</p>';
+                return;
+            }
+
+            filesList.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div class="file-item-info">
+                        <div class="file-item-name">📄 ${file.fileName}</div>
+                        <div class="file-item-meta">
+                            Uploaded: ${new Date(file.uploadedAt).toLocaleDateString()} • 
+                            Size: ${formatFileSize(file.fileSize)} • 
+                            Concepts: ${file.extractedConcepts.length}
+                        </div>
+                        ${file.extractedConcepts.length > 0 ? `
+                            <div class="file-item-meta" style="margin-top: 0.25rem;">
+                                <strong>Key concepts:</strong> ${file.extractedConcepts.slice(0, 5).join(', ')}${file.extractedConcepts.length > 5 ? '...' : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="file-item-actions">
+                        <button class="file-action-button delete-button" onclick="deleteFile('${file.fileId}', '${file.fileName}')">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function deleteFile(fileId, fileName) {
+            if (!confirm(`Are you sure you want to delete "${fileName}"?`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_BASE_URL}/files/${fileId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showSuccess(`File "${fileName}" deleted successfully`);
+                    loadUserFiles(); // Reload files list
+                } else {
+                    throw new Error(result.error || 'Delete failed');
+                }
+
+            } catch (error) {
+                console.error('Delete error:', error);
+                showError(`Failed to delete file: ${error.message}`);
+            }
+        }
+
+        function showSuccess(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.style.backgroundColor = '#f0fdf4';
+            errorElement.style.color = '#166534';
+            errorElement.style.borderColor = '#bbf7d0';
+            errorElement.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+                // Reset to error styling
+                errorElement.style.backgroundColor = '#fef2f2';
+                errorElement.style.color = '#dc2626';
+                errorElement.style.borderColor = '#fecaca';
+            }, 5000);
+        }
+
+        // Drag and drop functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInputLabel = document.querySelector('.file-input-label');
+            
+            if (fileInputLabel) {
+                fileInputLabel.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    fileInputLabel.classList.add('dragover');
+                });
+
+                fileInputLabel.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    fileInputLabel.classList.remove('dragover');
+                });
+
+                fileInputLabel.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    fileInputLabel.classList.remove('dragover');
+                    
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        const file = files[0];
+                        if (file.name.toLowerCase().endsWith('.txt')) {
+                            selectedFile = file;
+                            showFilePreview(file);
+                        } else {
+                            showError('Only TXT files are supported in this version');
+                        }
+                    }
+                });
+            }
+        });
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            if (checkAuthentication()) {
+                testAPIConnectivity();
+                loadUserFiles(); // Load user files on page load
+                
+                // Add welcome message based on user role
+                const userInfo = JSON.parse(localStorage.getItem('user_info'));
+                const welcomeTitle = document.querySelector('.welcome-title');
+                
+                if (userInfo.role === 'teacher') {
+                    welcomeTitle.textContent = 'Welcome to Your Teaching Dashboard';
+                    document.querySelector('.welcome-subtitle').textContent = 'Monitor student progress and gain insights with AI-powered analytics.';
+                } else {
+                    welcomeTitle.textContent = 'Welcome to Your Learning Dashboard';
+                }
+            }
+        });
+
+        // Handle browser back button
+        window.addEventListener('popstate', () => {
+            if (!checkAuthentication()) {
+                redirectToLogin();
+            }
+        });
+
+        // Periodic token validation (every 5 minutes)
+        setInterval(() => {
+            checkAuthentication();
+        }, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

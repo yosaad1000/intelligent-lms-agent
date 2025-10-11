@@ -1,0 +1,7 @@
+{
+  "api_id": "djinft5ljj",
+  "api_url": "https://djinft5ljj.execute-api.us-east-1.amazonaws.com/dev",
+  "hello_endpoint": "https://djinft5ljj.execute-api.us-east-1.amazonaws.com/dev/hello",
+  "auth_endpoint": "https://djinft5ljj.execute-api.us-east-1.amazonaws.com/dev/auth",
+  "validate_endpoint": "https://djinft5ljj.execute-api.us-east-1.amazonaws.com/dev/auth/validate"
+}

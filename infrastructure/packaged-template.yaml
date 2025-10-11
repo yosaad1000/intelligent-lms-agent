@@ -1,0 +1,282 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Intelligent LMS AI Agent - Basic Infrastructure
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.9
+    Environment:
+      Variables:
+        REGION:
+          Ref: AWS::Region
+Resources:
+  LMSFilesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: lms-files-${AWS::AccountId}-${AWS::Region}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+  LMSUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: lms-user-pool
+      AutoVerifiedAttributes:
+      - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+      - Name: email
+        AttributeDataType: String
+        Required: true
+        Mutable: true
+      - Name: custom:role
+        AttributeDataType: String
+        Required: false
+        Mutable: true
+  LMSUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId:
+        Ref: LMSUserPool
+      ClientName: lms-web-client
+      GenerateSecret: false
+      ExplicitAuthFlows:
+      - ADMIN_NO_SRP_AUTH
+      - USER_PASSWORD_AUTH
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 24
+      IdTokenValidity: 24
+      RefreshTokenValidity: 30
+  LMSDataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-data
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: PK
+        AttributeType: S
+      - AttributeName: SK
+        AttributeType: S
+      KeySchema:
+      - AttributeName: PK
+        KeyType: HASH
+      - AttributeName: SK
+        KeyType: RANGE
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: LMSLambdaPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            Resource:
+              Fn::Sub: ${LMSFilesBucket}/*
+          - Effect: Allow
+            Action:
+            - s3:ListBucket
+            Resource:
+              Fn::GetAtt:
+              - LMSFilesBucket
+              - Arn
+          - Effect: Allow
+            Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:Scan
+            Resource:
+              Fn::GetAtt:
+              - LMSDataTable
+              - Arn
+          - Effect: Allow
+            Action:
+            - cognito-idp:AdminCreateUser
+            - cognito-idp:AdminSetUserPassword
+            - cognito-idp:AdminInitiateAuth
+            - cognito-idp:AdminGetUser
+            Resource:
+              Fn::GetAtt:
+              - LMSUserPool
+              - Arn
+          - Effect: Allow
+            Action:
+            - bedrock:InvokeModel
+            - bedrock:InvokeAgent
+            Resource: '*'
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: lms-hello-world
+      CodeUri: s3://lms-deployment-6820/1ad94a040bf05b80e9c77aa2a4000f5c
+      Handler: hello_world.lambda_handler
+      Role:
+        Fn::GetAtt:
+        - LambdaExecutionRole
+        - Arn
+      Environment:
+        Variables:
+          USER_POOL_ID:
+            Ref: LMSUserPool
+          USER_POOL_CLIENT_ID:
+            Ref: LMSUserPoolClient
+          S3_BUCKET:
+            Ref: LMSFilesBucket
+          DYNAMODB_TABLE:
+            Ref: LMSDataTable
+      Events:
+        HelloApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /hello
+            Method: GET
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: lms-auth
+      CodeUri: s3://lms-deployment-6820/1ad94a040bf05b80e9c77aa2a4000f5c
+      Handler: auth.lambda_handler
+      Role:
+        Fn::GetAtt:
+        - LambdaExecutionRole
+        - Arn
+      Environment:
+        Variables:
+          USER_POOL_ID:
+            Ref: LMSUserPool
+          USER_POOL_CLIENT_ID:
+            Ref: LMSUserPoolClient
+          S3_BUCKET:
+            Ref: LMSFilesBucket
+          DYNAMODB_TABLE:
+            Ref: LMSDataTable
+      Events:
+        AuthPostApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /auth
+            Method: POST
+        AuthGetApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /auth/validate
+            Method: GET
+  FileUploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: lms-file-upload
+      CodeUri: s3://lms-deployment-6820/1ad94a040bf05b80e9c77aa2a4000f5c
+      Handler: file_upload.lambda_handler
+      Role:
+        Fn::GetAtt:
+        - LambdaExecutionRole
+        - Arn
+      Environment:
+        Variables:
+          USER_POOL_ID:
+            Ref: LMSUserPool
+          USER_POOL_CLIENT_ID:
+            Ref: LMSUserPoolClient
+          S3_BUCKET:
+            Ref: LMSFilesBucket
+          DYNAMODB_TABLE:
+            Ref: LMSDataTable
+      Events:
+        FileUploadPostApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /files
+            Method: POST
+        FileUploadGetApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /files
+            Method: GET
+        FileUploadDeleteApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /files/{fileId}
+            Method: DELETE
+  LMSApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: lms-api
+      StageName: dev
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+Outputs:
+  ApiGatewayUrl:
+    Description: API Gateway endpoint URL
+    Value:
+      Fn::Sub: https://${LMSApi}.execute-api.${AWS::Region}.amazonaws.com/dev
+    Export:
+      Name: LMS-API-URL
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value:
+      Ref: LMSUserPool
+    Export:
+      Name: LMS-USER-POOL-ID
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value:
+      Ref: LMSUserPoolClient
+    Export:
+      Name: LMS-USER-POOL-CLIENT-ID
+  S3BucketName:
+    Description: S3 Bucket for file storage
+    Value:
+      Ref: LMSFilesBucket
+    Export:
+      Name: LMS-S3-BUCKET
+  DynamoDBTableName:
+    Description: DynamoDB table name
+    Value:
+      Ref: LMSDataTable
+    Export:
+      Name: LMS-DYNAMODB-TABLE

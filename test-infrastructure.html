@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LMS Infrastructure Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 Intelligent LMS AI Agent - Infrastructure Test</h1>
+        
+        <div class="section info">
+            <h3>📋 Infrastructure Status</h3>
+            <p><strong>S3 Bucket:</strong> lms-files-145023137830-us-east-1</p>
+            <p><strong>User Pool ID:</strong> us-east-1_ux07rphza</p>
+            <p><strong>Client ID:</strong> 2vk3cuqvnl1bncnivl80dof4h1</p>
+            <p><strong>DynamoDB Table:</strong> lms-data</p>
+            <p><strong>Region:</strong> us-east-1</p>
+        </div>
+
+        <div class="section">
+            <h3>🔐 Test Authentication (Cognito)</h3>
+            
+            <div class="form-group">
+                <label for="action">Action:</label>
+                <select id="action">
+                    <option value="register">Register New User</option>
+                    <option value="login">Login Existing User</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" placeholder="test@example.com" value="test@example.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" placeholder="TestPass123" value="TestPass123">
+            </div>
+            
+            <div class="form-group">
+                <label for="role">Role (for registration):</label>
+                <select id="role">
+                    <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
+                </select>
+            </div>
+            
+            <button onclick="testCognito()">Test Cognito Authentication</button>
+            
+            <div id="cognitoResult" style="margin-top: 15px;"></div>
+        </div>
+
+        <div class="section">
+            <h3>🗄️ Test DynamoDB</h3>
+            <button onclick="testDynamoDB()">Test DynamoDB Connection</button>
+            <div id="dynamoResult" style="margin-top: 15px;"></div>
+        </div>
+
+        <div class="section">
+            <h3>📁 Test S3</h3>
+            <button onclick="testS3()">Test S3 Bucket Access</button>
+            <div id="s3Result" style="margin-top: 15px;"></div>
+        </div>
+
+        <div class="section">
+            <h3>🤖 Test Bedrock</h3>
+            <button onclick="testBedrock()">Test Bedrock Models</button>
+            <div id="bedrockResult" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.24.min.js"></script>
+    <script>
+        // Configure AWS SDK (Note: In production, use proper authentication)
+        // For this test, we'll use the browser's AWS SDK with temporary credentials
+        
+        function showResult(elementId, message, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="${isSuccess ? 'success' : 'error'}">${message}</div>`;
+        }
+
+        function showInfo(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="info">${message}</div>`;
+        }
+
+        async function testCognito() {
+            const action = document.getElementById('action').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
+
+            showInfo('cognitoResult', 'Testing Cognito authentication...');
+
+            try {
+                // Configure Cognito
+                AWS.config.region = 'us-east-1';
+                const cognito = new AWS.CognitoIdentityServiceProvider();
+
+                if (action === 'register') {
+                    const params = {
+                        UserPoolId: 'us-east-1_ux07rphza',
+                        Username: email,
+                        UserAttributes: [
+                            { Name: 'email', Value: email },
+                            { Name: 'email_verified', Value: 'true' },
+                            { Name: 'custom:role', Value: role }
+                        ],
+                        TemporaryPassword: password,
+                        MessageAction: 'SUPPRESS'
+                    };
+
+                    const result = await cognito.adminCreateUser(params).promise();
+                    
+                    // Set permanent password
+                    await cognito.adminSetUserPassword({
+                        UserPoolId: 'us-east-1_ux07rphza',
+                        Username: email,
+                        Password: password,
+                        Permanent: true
+                    }).promise();
+
+                    showResult('cognitoResult', `✅ User registered successfully!<br>User ID: ${result.User.Username}`, true);
+                } else {
+                    const params = {
+                        UserPoolId: 'us-east-1_ux07rphza',
+                        ClientId: '2vk3cuqvnl1bncnivl80dof4h1',
+                        AuthFlow: 'ADMIN_NO_SRP_AUTH',
+                        AuthParameters: {
+                            USERNAME: email,
+                            PASSWORD: password
+                        }
+                    };
+
+                    const result = await cognito.adminInitiateAuth(params).promise();
+                    showResult('cognitoResult', `✅ Login successful!<br>Access token received: ${result.AuthenticationResult.AccessToken.substring(0, 50)}...`, true);
+                }
+            } catch (error) {
+                showResult('cognitoResult', `❌ Cognito test failed: ${error.message}`, false);
+            }
+        }
+
+        async function testDynamoDB() {
+            showInfo('dynamoResult', 'Testing DynamoDB connection...');
+
+            try {
+                AWS.config.region = 'us-east-1';
+                const dynamodb = new AWS.DynamoDB();
+
+                const params = {
+                    TableName: 'lms-data'
+                };
+
+                const result = await dynamodb.describeTable(params).promise();
+                showResult('dynamoResult', `✅ DynamoDB table accessible!<br>Status: ${result.Table.TableStatus}<br>Items: ${result.Table.ItemCount}`, true);
+            } catch (error) {
+                showResult('dynamoResult', `❌ DynamoDB test failed: ${error.message}`, false);
+            }
+        }
+
+        async function testS3() {
+            showInfo('s3Result', 'Testing S3 bucket access...');
+
+            try {
+                AWS.config.region = 'us-east-1';
+                const s3 = new AWS.S3();
+
+                const params = {
+                    Bucket: 'lms-files-145023137830-us-east-1'
+                };
+
+                const result = await s3.headBucket(params).promise();
+                showResult('s3Result', `✅ S3 bucket accessible!<br>Bucket: lms-files-145023137830-us-east-1`, true);
+            } catch (error) {
+                showResult('s3Result', `❌ S3 test failed: ${error.message}`, false);
+            }
+        }
+
+        async function testBedrock() {
+            showInfo('bedrockResult', 'Testing Bedrock models...');
+
+            try {
+                AWS.config.region = 'us-east-1';
+                const bedrock = new AWS.Bedrock();
+
+                const result = await bedrock.listFoundationModels().promise();
+                const modelCount = result.modelSummaries.length;
+                const novaModels = result.modelSummaries.filter(m => m.modelName.includes('Nova')).length;
+                
+                showResult('bedrockResult', `✅ Bedrock accessible!<br>Total models: ${modelCount}<br>Nova models: ${novaModels}`, true);
+            } catch (error) {
+                showResult('bedrockResult', `❌ Bedrock test failed: ${error.message}<br><small>Note: Browser SDK may not support Bedrock directly. This is expected.</small>`, false);
+            }
+        }
+
+        // Show initial status
+        window.onload = function() {
+            showInfo('cognitoResult', 'Ready to test Cognito authentication');
+            showInfo('dynamoResult', 'Ready to test DynamoDB connection');
+            showInfo('s3Result', 'Ready to test S3 bucket access');
+            showInfo('bedrockResult', 'Ready to test Bedrock models');
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+﻿{
+    "REGION": "us-east-1",
+    "S3_BUCKET": "lms-files-145023137830-us-east-1",
+    "CLIENT_ID": "2vk3cuqvnl1bncnivl80dof4h1",
+    "DYNAMODB_TABLE": "lms-data",
+    "USER_POOL_ID": "us-east-1_ux07rphza"
+}
