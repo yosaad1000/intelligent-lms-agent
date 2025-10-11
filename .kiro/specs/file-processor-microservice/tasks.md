@@ -2,8 +2,8 @@
 
 ## Phase 1: Basic File Handling (Days 2-3)
 
-### Task 1.1: AWS Infrastructure Setup
-- [ ] 1.1.1 Create S3 bucket structure
+### Task 1.1: AWS Infrastructure Setup ✅
+- [x] 1.1.1 Create S3 bucket structure
   - Set up S3 bucket with proper naming
   - Configure bucket policies and CORS
   - Create folder structure (users/{user_id}/raw, processed, metadata)
@@ -12,7 +12,7 @@
   - **Owner**: Team Member B
   - **Duration**: 2 hours
 
-- [ ] 1.1.2 Set up DynamoDB table for metadata
+- [x] 1.1.2 Set up DynamoDB table for metadata
   - Create file metadata table with proper schema
   - Configure GSI for user-based queries
   - Set up proper indexes for performance
@@ -21,7 +21,7 @@
   - **Owner**: Team Member B
   - **Duration**: 1 hour
 
-- [ ] 1.1.3 Configure Bedrock Knowledge Base
+- [x] 1.1.3 Configure Bedrock Knowledge Base
   - Create Knowledge Base with S3 data source
   - Configure OpenSearch Serverless collection
   - Set up proper IAM roles and permissions
