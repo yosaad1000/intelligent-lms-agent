@@ -1,0 +1,16 @@
+version = 0.1
+
+[default]
+[default.build]
+[default.build.parameters]
+use_container = false
+
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "lms-api-backend"
+s3_bucket = ""  # SAM will create this
+s3_prefix = "lms-api-backend"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = []

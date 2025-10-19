@@ -1,45 +1,39 @@
 # Core Dependencies
-gradio>=4.0.0
-boto3>=1.34.0
+boto3>=1.40.0
 python-dotenv>=1.0.0
+pydantic>=2.0.0
+fastapi>=0.100.0
+uvicorn>=0.20.0
 
-# File Processing
+# Pinecone
+pinecone>=5.0.0
+
+# Supabase
+supabase>=2.0.0
+
+# Text Processing
 PyPDF2>=3.0.0
 python-docx>=0.8.11
-pdfplumber>=0.9.0
+python-multipart>=0.0.6
 
-# Data Processing
-pandas>=2.0.0
-numpy>=1.24.0
+# AI/ML
+openai>=1.0.0
+tiktoken>=0.5.0
 
-# Visualization
-plotly>=5.0.0
-matplotlib>=3.7.0
+# AWS Bedrock
+boto3>=1.40.0
+botocore>=1.40.0
 
-# Audio Processing
-pydub>=0.25.1
-librosa>=0.10.0
+# Utilities
+requests>=2.31.0
+aiofiles>=23.0.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
 
 # Testing
 pytest>=7.0.0
-pytest-cov>=4.0.0
 pytest-asyncio>=0.21.0
-moto>=4.2.0
+httpx>=0.24.0
 
-# Development
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.5.0
-
-# Security
-cryptography>=41.0.0
-pyjwt>=2.8.0
-
-# Async Support
-aiofiles>=23.0.0
-asyncio-throttle>=1.0.2
-
-# Utilities
-uuid>=1.30
-requests>=2.31.0
-python-multipart>=0.0.6
+# AWS SAM (already installed globally)
+# aws-sam-cli>=1.100.0

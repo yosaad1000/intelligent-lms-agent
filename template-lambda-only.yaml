@@ -1,0 +1,339 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: LMS API Backend - Lambda Functions Only (using existing resources)
+
+# Global configuration
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        PINECONE_API_KEY: "pcsk_2cfkWP_4LAmw7gXfNVpDKsS3J8bz4fvxLUJoeWs1o9Tr9BSEuUJ8ZeK1v8C5qiUu8qfHUN"
+        SUPABASE_URL: "https://scijpejtvneuqbhkoxuz.supabase.co"
+        SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjaWpwZWp0dm5ldXFiaGtveHV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1OTcxNDEsImV4cCI6MjA3MTE3MzE0MX0.Z6Q_DmsuHYOOvCGed5hcKDrT93XPL5hHwCyGDREcmmw"
+        DOCUMENTS_BUCKET: "lms-documents-145023137830-1760886549"
+
+# Resources
+Resources:
+  # API Gateway
+  LMSApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+  # Health Check Function (no auth required)
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/health/
+      Handler: health.lambda_handler
+      Description: Health check endpoint
+      Events:
+        HealthApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /api/health
+            Method: get
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:DescribeTable
+              - s3:HeadBucket
+              - s3:ListBucket
+              - bedrock:InvokeModel
+            Resource: 
+              - "*"
+              - "arn:aws:s3:::lms-documents-145023137830-1760886549"
+
+  # File Processing Function
+  FileProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/file_processing/
+      Handler: file_handler.lambda_handler
+      Description: File upload and RAG processing
+      Timeout: 300
+      MemorySize: 1024
+      Events:
+        FileUploadApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /api/files
+            Method: post
+        FileGetApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /api/files
+            Method: get
+      Policies:
+        - S3CrudPolicy:
+            BucketName: "lms-documents-145023137830-1760886549"
+        - DynamoDBCrudPolicy:
+            TableName: "lms-user-files"
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeAgent
+              - dynamodb:DescribeTable
+              - s3:HeadBucket
+            Resource: "*"
+
+  # Chat Function
+  ChatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/chat/
+      Handler: chat_handler.lambda_handler
+      Description: AI Chat with RAG
+      Timeout: 60
+      MemorySize: 512
+      Events:
+        ChatApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /api/chat
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: "lms-chat-conversations"
+        - DynamoDBCrudPolicy:
+            TableName: "lms-chat-messages"
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeAgent
+              - dynamodb:DescribeTable
+            Resource: "*"
+
+  # Additional DynamoDB Tables for Quiz System
+  QuizzesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-quizzes
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: quiz_id
+          AttributeType: S
+        - AttributeName: subject_id
+          AttributeType: S
+        - AttributeName: created_by
+          AttributeType: S
+      KeySchema:
+        - AttributeName: quiz_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: subject-id-index
+          KeySchema:
+            - AttributeName: subject_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: created-by-index
+          KeySchema:
+            - AttributeName: created_by
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  QuizSubmissionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-quiz-submissions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: submission_id
+          AttributeType: S
+        - AttributeName: quiz_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: submitted_at
+          AttributeType: N
+      KeySchema:
+        - AttributeName: submission_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: quiz-id-index
+          KeySchema:
+            - AttributeName: quiz_id
+              KeyType: HASH
+            - AttributeName: submitted_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: user-id-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: submitted_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # Interview System Tables
+  InterviewsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-interviews
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: interview_id
+          AttributeType: S
+        - AttributeName: subject_id
+          AttributeType: S
+        - AttributeName: created_by
+          AttributeType: S
+      KeySchema:
+        - AttributeName: interview_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: subject-id-index
+          KeySchema:
+            - AttributeName: subject_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: created-by-index
+          KeySchema:
+            - AttributeName: created_by
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  InterviewSessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-interview-sessions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: interview_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: started_at
+          AttributeType: N
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: interview-id-index
+          KeySchema:
+            - AttributeName: interview_id
+              KeyType: HASH
+            - AttributeName: started_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: user-id-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: started_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # Analytics and Learning Progress Tables
+  UserAnalyticsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-user-analytics
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: subject_id
+          AttributeType: S
+        - AttributeName: updated_at
+          AttributeType: N
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+        - AttributeName: subject_id
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: subject-updated-index
+          KeySchema:
+            - AttributeName: subject_id
+              KeyType: HASH
+            - AttributeName: updated_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  LearningProgressTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-learning-progress
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: progress_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: concept_id
+          AttributeType: S
+        - AttributeName: updated_at
+          AttributeType: N
+      KeySchema:
+        - AttributeName: progress_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: user-concept-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: concept_id
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: concept-updated-index
+          KeySchema:
+            - AttributeName: concept_id
+              KeyType: HASH
+            - AttributeName: updated_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+# Outputs
+Outputs:
+  LMSApiUrl:
+    Description: API Gateway endpoint URL
+    Value:
+      Fn::Sub: 'https://${LMSApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+  
+  HealthEndpoint:
+    Description: Health check endpoint
+    Value:
+      Fn::Sub: 'https://${LMSApi}.execute-api.${AWS::Region}.amazonaws.com/prod/api/health'
+  
+  FileUploadEndpoint:
+    Description: File upload endpoint
+    Value:
+      Fn::Sub: 'https://${LMSApi}.execute-api.${AWS::Region}.amazonaws.com/prod/api/files'
+  
+  ChatEndpoint:
+    Description: Chat endpoint
+    Value:
+      Fn::Sub: 'https://${LMSApi}.execute-api.${AWS::Region}.amazonaws.com/prod/api/chat'

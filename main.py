@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Intelligent LMS Agent - Main Application
+Intelligent LMS Agent - Local Development Interface
 AWS Hackathon Project
 
-This is the main entry point that integrates all microservices
-into a single Gradio application.
+This is a local Gradio interface for testing Lambda functions during development.
+Production deployment uses API Gateway + Lambda functions.
 """
 
 import gradio as gr
@@ -424,14 +424,14 @@ class IntelligentLMSApp:
         ---
         
         ### 🚀 **Development Status**
-        This is an active development version for the AWS Hackathon. Features are being implemented in phases:
+        This is a local development interface for AWS Lambda functions. Production uses API Gateway + Lambda:
         
-        - ✅ **Project Structure & Specifications** - Complete
-        - 🔄 **Authentication Service** - In Development  
-        - 🔄 **File Processing Service** - In Development
-        - 🔄 **AI Chat Service** - In Development
-        - 🔄 **Voice Interview Service** - In Development
-        - 🔄 **Quiz Generator Service** - In Development
+        - ✅ **SAM Infrastructure** - Complete
+        - ✅ **File Processing Lambda** - Complete
+        - 🔄 **Authentication Lambda** - In Development  
+        - 🔄 **AI Chat Lambda** - In Development
+        - 🔄 **Voice Interview Lambda** - In Development
+        - 🔄 **Quiz Generator Lambda** - In Development
         
         ### 📚 **Quick Links**
         - [📋 Project Specifications](.kiro/specs/) - Detailed technical specs

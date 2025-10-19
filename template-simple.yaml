@@ -1,0 +1,206 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: LMS API Backend - Serverless Lambda Functions
+
+# Global configuration
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        PINECONE_API_KEY: "pcsk_2cfkWP_4LAmw7gXfNVpDKsS3J8bz4fvxLUJoeWs1o9Tr9BSEuUJ8ZeK1v8C5qiUu8qfHUN"
+        SUPABASE_URL: "https://scijpejtvneuqbhkoxuz.supabase.co"
+        SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjaWpwZWp0dm5ldXFiaGtveHV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1OTcxNDEsImV4cCI6MjA3MTE3MzE0MX0.Z6Q_DmsuHYOOvCGed5hcKDrT93XPL5hHwCyGDREcmmw"
+
+# Resources
+Resources:
+  # API Gateway
+  LMSApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+  # Health Check Function (no auth required)
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/health/
+      Handler: health.lambda_handler
+      Description: Health check endpoint
+      Events:
+        HealthApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /api/health
+            Method: get
+
+  # File Processing Function
+  FileProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/file_processing/
+      Handler: file_handler.lambda_handler
+      Description: File upload and RAG processing
+      Timeout: 300
+      MemorySize: 1024
+      Events:
+        FileUploadApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /api/files
+            Method: post
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref DocumentsBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserFilesTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeAgent
+            Resource: "*"
+
+  # Chat Function
+  ChatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/chat/
+      Handler: chat_handler.lambda_handler
+      Description: AI Chat with RAG
+      Timeout: 60
+      MemorySize: 512
+      Events:
+        ChatApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: LMSApi
+            Path: /api/chat
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChatConversationsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChatMessagesTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeAgent
+            Resource: "*"
+
+  # S3 Bucket for Documents (use existing)
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "lms-documents-${AWS::AccountId}-${AWS::Region}"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, DELETE]
+            AllowedOrigins: ['*']
+            MaxAge: 3000
+
+  # DynamoDB Tables
+  UserFilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-user-files
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: file_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: file_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: user-id-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  ChatConversationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-chat-conversations
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: conversation_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: subject_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: conversation_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: user-id-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: user-subject-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: subject_id
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  ChatMessagesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-chat-messages
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: conversation_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: conversation_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: user-id-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+# Outputs
+Outputs:
+  LMSApiUrl:
+    Description: API Gateway endpoint URL
+    Value:
+      Fn::Sub: 'https://${LMSApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+  
+  DocumentsBucketName:
+    Description: S3 bucket for documents
+    Value:
+      Ref: DocumentsBucket

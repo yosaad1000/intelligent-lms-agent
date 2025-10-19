@@ -24,10 +24,22 @@ class Config:
     # AWS S3
     S3_BUCKET_NAME: str = os.getenv('S3_BUCKET_NAME', '')
     
-    # AWS Bedrock
-    BEDROCK_AGENT_ID: str = os.getenv('BEDROCK_AGENT_ID', '')
+    # AWS Bedrock - Multiple Specialized Agents
+    BEDROCK_CHAT_AGENT_ID: str = os.getenv('BEDROCK_CHAT_AGENT_ID', '')
+    BEDROCK_QUIZ_AGENT_ID: str = os.getenv('BEDROCK_QUIZ_AGENT_ID', '')
+    BEDROCK_INTERVIEW_AGENT_ID: str = os.getenv('BEDROCK_INTERVIEW_AGENT_ID', '')
+    BEDROCK_ANALYSIS_AGENT_ID: str = os.getenv('BEDROCK_ANALYSIS_AGENT_ID', '')
     BEDROCK_AGENT_ALIAS_ID: str = os.getenv('BEDROCK_AGENT_ALIAS_ID', 'TSTALIASID')
     KNOWLEDGE_BASE_ID: str = os.getenv('KNOWLEDGE_BASE_ID', '')
+    
+    # Bedrock Model Configuration
+    BEDROCK_MODEL_ID: str = os.getenv('BEDROCK_MODEL_ID', 'amazon.nova-micro-v1:0')
+    BEDROCK_EMBEDDING_MODEL_ID: str = os.getenv('BEDROCK_EMBEDDING_MODEL_ID', 'amazon.titan-embed-text-v1')
+    
+    # Bedrock Agent Configuration
+    BEDROCK_MAX_RETRIES: int = int(os.getenv('BEDROCK_MAX_RETRIES', '3'))
+    BEDROCK_RETRY_DELAY: float = float(os.getenv('BEDROCK_RETRY_DELAY', '1.0'))
+    BEDROCK_TIMEOUT_SECONDS: int = int(os.getenv('BEDROCK_TIMEOUT_SECONDS', '30'))
     
     # DynamoDB
     DYNAMODB_TABLE_PREFIX: str = os.getenv('DYNAMODB_TABLE_PREFIX', 'lms')
