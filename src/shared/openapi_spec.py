@@ -564,12 +564,24 @@ def generate_paths() -> Dict[str, Any]:
                 "summary": "Health check",
                 "description": "Check the health status of the API and its dependencies",
                 "operationId": "getHealth",
+                "security": [],  # No authentication required
                 "responses": {
                     "200": {
                         "description": "System is healthy",
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/HealthResponse"}
+                                "schema": {"$ref": "#/components/schemas/HealthResponse"},
+                                "example": {
+                                    "success": True,
+                                    "status": "healthy",
+                                    "services": {
+                                        "dynamodb": "healthy",
+                                        "s3": "healthy",
+                                        "bedrock": "healthy",
+                                        "pinecone": "configured"
+                                    },
+                                    "timestamp": "2024-01-01T12:00:00Z"
+                                }
                             }
                         }
                     },
@@ -577,7 +589,18 @@ def generate_paths() -> Dict[str, Any]:
                         "description": "System is degraded or unhealthy",
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/HealthResponse"}
+                                "schema": {"$ref": "#/components/schemas/HealthResponse"},
+                                "example": {
+                                    "success": True,
+                                    "status": "degraded",
+                                    "services": {
+                                        "dynamodb": "healthy",
+                                        "s3": "unhealthy: Access denied",
+                                        "bedrock": "healthy",
+                                        "pinecone": "not configured"
+                                    },
+                                    "timestamp": "2024-01-01T12:00:00Z"
+                                }
                             }
                         }
                     }
@@ -819,6 +842,326 @@ def generate_paths() -> Dict[str, Any]:
                             }
                         }
                     },
+                    "500": {"$ref": "#/components/responses/InternalServerError"}
+                }
+            }
+        },
+        "/api/quiz/generate": {
+            "post": {
+                "tags": ["Quiz"],
+                "summary": "Generate quiz",
+                "description": "Generate AI-powered quiz questions from uploaded documents",
+                "operationId": "generateQuiz",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "subject_id": {
+                                        "type": "string",
+                                        "description": "Subject context",
+                                        "example": "physics101"
+                                    },
+                                    "document_ids": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "Specific documents to use",
+                                        "example": ["file-123", "file-456"]
+                                    },
+                                    "num_questions": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 20,
+                                        "default": 5,
+                                        "description": "Number of questions to generate"
+                                    },
+                                    "difficulty": {
+                                        "type": "string",
+                                        "enum": ["beginner", "intermediate", "advanced"],
+                                        "default": "intermediate",
+                                        "description": "Question difficulty level"
+                                    },
+                                    "user_id": {
+                                        "type": "string",
+                                        "description": "User ID (for testing without auth)",
+                                        "example": "user-123"
+                                    }
+                                }
+                            },
+                            "examples": {
+                                "basic": {"$ref": "#/components/examples/QuizGenerationExample"}
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Quiz generated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "quiz_id": {"type": "string"},
+                                        "questions": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "question_id": {"type": "string"},
+                                                    "question_text": {"type": "string"},
+                                                    "options": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "option_id": {"type": "string"},
+                                                                "text": {"type": "string"},
+                                                                "is_correct": {"type": "boolean"}
+                                                            }
+                                                        }
+                                                    },
+                                                    "explanation": {"type": "string"},
+                                                    "source_document": {"type": "string"},
+                                                    "difficulty": {"type": "string"}
+                                                }
+                                            }
+                                        },
+                                        "subject_id": {"type": "string"},
+                                        "created_at": {"type": "string", "format": "date-time"},
+                                        "timestamp": {"type": "string", "format": "date-time"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {"$ref": "#/components/responses/BadRequest"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "500": {"$ref": "#/components/responses/InternalServerError"},
+                    "503": {"$ref": "#/components/responses/ServiceUnavailable"}
+                }
+            }
+        },
+        "/api/quiz/submit": {
+            "post": {
+                "tags": ["Quiz"],
+                "summary": "Submit quiz answers",
+                "description": "Submit quiz answers and get scoring results",
+                "operationId": "submitQuiz",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["quiz_id", "answers"],
+                                "properties": {
+                                    "quiz_id": {
+                                        "type": "string",
+                                        "description": "Quiz ID",
+                                        "example": "quiz-123e4567-e89b-12d3-a456-426614174000"
+                                    },
+                                    "answers": {
+                                        "type": "object",
+                                        "description": "Question ID to answer mapping",
+                                        "example": {
+                                            "q1": "A",
+                                            "q2": "C",
+                                            "q3": "B"
+                                        }
+                                    },
+                                    "user_id": {
+                                        "type": "string",
+                                        "description": "User ID (for testing without auth)",
+                                        "example": "user-123"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Quiz submitted and scored successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "quiz_id": {"type": "string"},
+                                        "score": {"type": "number", "minimum": 0, "maximum": 100},
+                                        "total_questions": {"type": "integer"},
+                                        "correct_answers": {"type": "integer"},
+                                        "results": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "question_id": {"type": "string"},
+                                                    "user_answer": {"type": "string"},
+                                                    "correct_answer": {"type": "string"},
+                                                    "is_correct": {"type": "boolean"},
+                                                    "explanation": {"type": "string"}
+                                                }
+                                            }
+                                        },
+                                        "submitted_at": {"type": "string", "format": "date-time"},
+                                        "timestamp": {"type": "string", "format": "date-time"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {"$ref": "#/components/responses/BadRequest"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "500": {"$ref": "#/components/responses/InternalServerError"}
+                }
+            }
+        },
+        "/api/analytics": {
+            "get": {
+                "tags": ["Analytics"],
+                "summary": "Get learning analytics",
+                "description": "Retrieve learning progress and analytics for the user",
+                "operationId": "getLearningAnalytics",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "User ID (for testing without auth)",
+                        "schema": {"type": "string"},
+                        "example": "user-123"
+                    },
+                    {
+                        "name": "subject_id",
+                        "in": "query",
+                        "description": "Subject filter",
+                        "schema": {"type": "string"},
+                        "example": "physics101"
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Start date (ISO format)",
+                        "schema": {"type": "string", "format": "date"},
+                        "example": "2024-01-01"
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "End date (ISO format)",
+                        "schema": {"type": "string", "format": "date"},
+                        "example": "2024-01-31"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Analytics retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "user_id": {"type": "string"},
+                                        "total_interactions": {"type": "integer"},
+                                        "documents_processed": {"type": "integer"},
+                                        "quizzes_taken": {"type": "integer"},
+                                        "average_score": {"type": "number"},
+                                        "study_time_hours": {"type": "number"},
+                                        "concept_masteries": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "concept": {"type": "string"},
+                                                    "mastery_level": {"type": "number", "minimum": 0, "maximum": 1},
+                                                    "interaction_count": {"type": "integer"},
+                                                    "last_interaction": {"type": "string", "format": "date-time"}
+                                                }
+                                            }
+                                        },
+                                        "recommendations": {
+                                            "type": "array",
+                                            "items": {"type": "string"}
+                                        },
+                                        "timestamp": {"type": "string", "format": "date-time"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                    "500": {"$ref": "#/components/responses/InternalServerError"}
+                }
+            }
+        },
+        "/api/interview/start": {
+            "post": {
+                "tags": ["Voice"],
+                "summary": "Start voice interview",
+                "description": "Start a voice interview session and get WebSocket connection details",
+                "operationId": "startVoiceInterview",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "subject_id": {
+                                        "type": "string",
+                                        "description": "Subject context",
+                                        "example": "physics101"
+                                    },
+                                    "interview_type": {
+                                        "type": "string",
+                                        "default": "general",
+                                        "description": "Type of interview",
+                                        "example": "general"
+                                    },
+                                    "duration_minutes": {
+                                        "type": "integer",
+                                        "minimum": 5,
+                                        "maximum": 60,
+                                        "default": 15,
+                                        "description": "Interview duration in minutes"
+                                    },
+                                    "user_id": {
+                                        "type": "string",
+                                        "description": "User ID (for testing without auth)",
+                                        "example": "user-123"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Interview session started successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "session_id": {"type": "string"},
+                                        "websocket_url": {"type": "string", "format": "uri"},
+                                        "initial_question": {"type": "string"},
+                                        "timestamp": {"type": "string", "format": "date-time"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {"$ref": "#/components/responses/BadRequest"},
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
                     "500": {"$ref": "#/components/responses/InternalServerError"}
                 }
             }

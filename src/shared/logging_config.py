@@ -403,6 +403,196 @@ def log_security_event(
     logger.log(level, f"Security event: {event_type}", extra=log_data)
 
 
+def log_validation_error(
+    field: str,
+    value: Any,
+    error_message: str,
+    user_id: str = None,
+    logger: logging.Logger = None
+) -> None:
+    """
+    Log validation errors for monitoring and security
+    
+    Args:
+        field: Field that failed validation
+        value: Value that failed (sanitized)
+        error_message: Validation error message
+        user_id: User identifier if available
+        logger: Logger instance
+    """
+    
+    if logger is None:
+        logger = get_logger(__name__)
+    
+    # Sanitize sensitive values
+    sanitized_value = str(value)[:100] if value else None
+    if field.lower() in ['password', 'token', 'secret', 'key']:
+        sanitized_value = '[REDACTED]'
+    
+    log_data = {
+        'event_type': 'validation_error',
+        'field': field,
+        'value': sanitized_value,
+        'error_message': error_message
+    }
+    
+    if user_id:
+        log_data['user_id'] = user_id
+    
+    logger.warning(f"Validation error for field '{field}': {error_message}", extra=log_data)
+
+
+def log_rate_limit_event(
+    user_id: str,
+    endpoint: str,
+    limit_type: str,
+    current_count: int,
+    limit: int,
+    source_ip: str = None,
+    logger: logging.Logger = None
+) -> None:
+    """
+    Log rate limiting events
+    
+    Args:
+        user_id: User identifier
+        endpoint: API endpoint
+        limit_type: Type of rate limit (requests_per_minute, files_per_hour, etc.)
+        current_count: Current request count
+        limit: Rate limit threshold
+        source_ip: Source IP address
+        logger: Logger instance
+    """
+    
+    if logger is None:
+        logger = get_logger(__name__)
+    
+    log_data = {
+        'event_type': 'rate_limit',
+        'user_id': user_id,
+        'endpoint': endpoint,
+        'limit_type': limit_type,
+        'current_count': current_count,
+        'limit': limit,
+        'exceeded': current_count >= limit
+    }
+    
+    if source_ip:
+        log_data['source_ip'] = source_ip
+    
+    if current_count >= limit:
+        logger.warning(f"Rate limit exceeded for user {user_id} on {endpoint}", extra=log_data)
+    else:
+        logger.info(f"Rate limit check for user {user_id} on {endpoint}", extra=log_data)
+
+
+def log_business_event(
+    event_type: str,
+    user_id: str,
+    details: Dict[str, Any] = None,
+    logger: logging.Logger = None
+) -> None:
+    """
+    Log business events for analytics and monitoring
+    
+    Args:
+        event_type: Type of business event (file_uploaded, quiz_completed, etc.)
+        user_id: User identifier
+        details: Additional event details
+        logger: Logger instance
+    """
+    
+    if logger is None:
+        logger = get_logger(__name__)
+    
+    log_data = {
+        'event_type': 'business_event',
+        'business_event_type': event_type,
+        'user_id': user_id
+    }
+    
+    if details:
+        log_data['details'] = details
+    
+    logger.info(f"Business event: {event_type} for user {user_id}", extra=log_data)
+
+
+def log_error_with_context(
+    error: Exception,
+    context: Dict[str, Any] = None,
+    user_id: str = None,
+    correlation_id: str = None,
+    logger: logging.Logger = None
+) -> None:
+    """
+    Log errors with comprehensive context information
+    
+    Args:
+        error: Exception that occurred
+        context: Additional context information
+        user_id: User identifier if available
+        correlation_id: Request correlation ID
+        logger: Logger instance
+    """
+    
+    if logger is None:
+        logger = get_logger(__name__)
+    
+    import traceback
+    
+    log_data = {
+        'event_type': 'error',
+        'error_type': type(error).__name__,
+        'error_message': str(error),
+        'traceback': traceback.format_exc()
+    }
+    
+    if context:
+        log_data['context'] = context
+    
+    if user_id:
+        log_data['user_id'] = user_id
+    
+    if correlation_id:
+        log_data['correlation_id'] = correlation_id
+    
+    logger.error(f"Error occurred: {type(error).__name__}: {str(error)}", extra=log_data)
+
+
+def create_structured_logger(
+    name: str,
+    additional_fields: Dict[str, Any] = None
+) -> logging.Logger:
+    """
+    Create a structured logger with additional fields
+    
+    Args:
+        name: Logger name
+        additional_fields: Additional fields to include in all log messages
+        
+    Returns:
+        Configured logger with structured logging
+    """
+    
+    logger = get_logger(name)
+    
+    if additional_fields:
+        # Create a custom filter to add fields
+        class StructuredFilter(logging.Filter):
+            def __init__(self, fields):
+                super().__init__()
+                self.fields = fields
+            
+            def filter(self, record):
+                for key, value in self.fields.items():
+                    setattr(record, key, value)
+                return True
+        
+        logger.addFilter(StructuredFilter(additional_fields))
+    
+    return logger
+
+
 class LoggingContext:
     """Context manager for request-scoped logging"""
     

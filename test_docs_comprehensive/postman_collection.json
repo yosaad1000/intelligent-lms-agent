@@ -1,0 +1,456 @@
+{
+  "info": {
+    "name": "LMS AI Backend API",
+    "description": "\n# Learning Management System AI Backend API\n\nA comprehensive API for an AI-powered Learning Management System built on AWS Bedrock AgentCore.\n\n## Features\n\n- **AI Chat**: Intelligent conversations with RAG-enhanced responses\n- **File Processing**: Upload and process educational documents with AWS Textract\n- **Quiz Generation**: AI-generated quizzes from uploaded content\n- **Voice Interviews**: Real-time voice interviews with AI\n- **Learning Analytics**: Track progress and generate insights\n- **Multi-language Support**: Translation and language detection\n\n## Authentication\n\nThe API uses JWT tokens for authentication. Include the token in the Authorization header:\n\n```\nAuthorization: Bearer <your-jwt-token>\n```\n\nFor testing purposes, you can also include `user_id` in the request body.\n\n## Error Handling\n\nAll errors follow a standardized format:\n\n```json\n{\n  \"success\": false,\n  \"error\": {\n    \"code\": \"ERROR_CODE\",\n    \"message\": \"User-friendly error message\",\n    \"details\": {},\n    \"timestamp\": \"2024-01-01T00:00:00Z\"\n  }\n}\n```\n\n## Rate Limiting\n\nAPI requests are rate-limited to prevent abuse. Current limits:\n- 100 requests per minute per user\n- 10 file uploads per hour per user\n- 5 concurrent voice interview sessions per user\n            ",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.lms.example.com",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "your-jwt-token-here",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send chat message",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/chat",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "chat"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Get conversation history",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/chat/history",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "chat",
+            "history"
+          ],
+          "query": [
+            {
+              "key": "user_id",
+              "value": "",
+              "description": "User ID (for testing without auth)"
+            },
+            {
+              "key": "conversation_id",
+              "value": "",
+              "description": "Specific conversation ID"
+            },
+            {
+              "key": "limit",
+              "value": "",
+              "description": "Maximum number of messages to return"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Upload file",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/files",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "files"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Get user files",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/files",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "files"
+          ],
+          "query": [
+            {
+              "key": "user_id",
+              "value": "",
+              "description": "User ID (for testing without auth)"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Process uploaded file",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/files/process",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "files",
+            "process"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file_id\": \"file-123e4567-e89b-12d3-a456-426614174000\",\n  \"user_id\": \"user-123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Generate quiz",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/quiz/generate",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "quiz",
+            "generate"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subject_id\": \"physics101\",\n  \"document_ids\": [\n    \"file-123\",\n    \"file-456\"\n  ],\n  \"num_questions\": 123,\n  \"difficulty\": \"example_difficulty\",\n  \"user_id\": \"user-123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Submit quiz answers",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/quiz/submit",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "quiz",
+            "submit"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quiz_id\": \"quiz-123e4567-e89b-12d3-a456-426614174000\",\n  \"answers\": {\n    \"q1\": \"A\",\n    \"q2\": \"C\",\n    \"q3\": \"B\"\n  },\n  \"user_id\": \"user-123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Get learning analytics",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/analytics",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "analytics"
+          ],
+          "query": [
+            {
+              "key": "user_id",
+              "value": "",
+              "description": "User ID (for testing without auth)"
+            },
+            {
+              "key": "subject_id",
+              "value": "",
+              "description": "Subject filter"
+            },
+            {
+              "key": "date_from",
+              "value": "",
+              "description": "Start date (ISO format)"
+            },
+            {
+              "key": "date_to",
+              "value": "",
+              "description": "End date (ISO format)"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Start voice interview",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/interview/start",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "interview",
+            "start"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{auth_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subject_id\": \"physics101\",\n  \"interview_type\": \"general\",\n  \"duration_minutes\": 123,\n  \"user_id\": \"user-123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

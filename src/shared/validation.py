@@ -3,8 +3,8 @@ Pydantic models for request/response validation
 Provides type-safe validation for all API endpoints
 """
 
-from pydantic import BaseModel, Field, validator, root_validator
-from typing import Optional, List, Dict, Any, Union
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
+from typing import Optional, List, Dict, Any, Union, Literal
 from datetime import datetime
 from enum import Enum
 
@@ -43,19 +43,17 @@ class UserRole(str, Enum):
 
 class BaseRequest(BaseModel):
     """Base request model with common fields"""
-    user_id: Optional[str] = Field(None, description="User ID (for testing without auth)")
+    model_config = ConfigDict(extra="forbid")  # Reject unknown fields
     
-    class Config:
-        extra = "forbid"  # Reject unknown fields
+    user_id: Optional[str] = Field(None, description="User ID (for testing without auth)")
 
 
 class BaseResponse(BaseModel):
     """Base response model with common fields"""
+    model_config = ConfigDict(extra="allow")
+    
     success: bool = Field(description="Whether the request was successful")
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
-    
-    class Config:
-        extra = "allow"
 
 
 class ErrorDetail(BaseModel):
@@ -68,7 +66,7 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseResponse):
     """Standardized error response"""
-    success: bool = Field(False, const=True)
+    success: Literal[False] = Field(False, description="Always false for error responses")
     error: ErrorDetail
 
 
@@ -80,7 +78,8 @@ class ChatMessageRequest(BaseRequest):
     conversation_id: Optional[str] = Field(None, description="Existing conversation ID")
     subject_id: Optional[str] = Field(None, description="Subject context for the chat")
     
-    @validator('message')
+    @field_validator('message')
+    @classmethod
     def validate_message(cls, v):
         if not v.strip():
             raise ValueError('Message cannot be empty or whitespace only')
@@ -149,7 +148,8 @@ class FileUploadRequest(BaseRequest):
     file_size: int = Field(..., gt=0, le=10*1024*1024, description="File size in bytes")
     subject_id: Optional[str] = Field(None, description="Associated subject ID")
     
-    @validator('filename')
+    @field_validator('filename')
+    @classmethod
     def validate_filename(cls, v):
         allowed_extensions = ['.pdf', '.docx', '.txt', '.doc']
         if '.' not in v:
@@ -226,7 +226,7 @@ class QuizGenerationRequest(BaseRequest):
     subject_id: Optional[str] = Field(None, description="Subject context")
     document_ids: Optional[List[str]] = Field(None, description="Specific documents to use")
     num_questions: int = Field(5, ge=1, le=20, description="Number of questions to generate")
-    difficulty: str = Field("intermediate", regex="^(beginner|intermediate|advanced)$")
+    difficulty: str = Field("intermediate", pattern="^(beginner|intermediate|advanced)$")
     question_types: Optional[List[str]] = Field(None, description="Types of questions to generate")
 
 

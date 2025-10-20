@@ -355,6 +355,147 @@ class APITester:
         result.test_name = "File Processing - Non-existent file"
         error_tests.append(result)
         
+        # Test malformed JSON
+        endpoint = APIEndpoint(
+            method="POST",
+            path="/api/chat",
+            description="Chat with malformed JSON",
+            expected_status=400
+        )
+        
+        try:
+            url = f"{self.base_url}{endpoint.path}"
+            response = self.session.post(
+                url, 
+                data="invalid json{", 
+                headers={'Content-Type': 'application/json'},
+                timeout=30
+            )
+            
+            result = TestResult(
+                test_name="Chat - Malformed JSON",
+                success=response.status_code == 400,
+                status_code=response.status_code,
+                error_message=None if response.status_code == 400 else f"Expected 400, got {response.status_code}"
+            )
+        except Exception as e:
+            result = TestResult(
+                test_name="Chat - Malformed JSON",
+                success=False,
+                error_message=str(e)
+            )
+        
+        error_tests.append(result)
+        
+        # Test SQL injection attempt
+        endpoint = APIEndpoint(
+            method="POST",
+            path="/api/chat",
+            description="Chat with SQL injection attempt",
+            expected_status=200  # Should be handled gracefully
+        )
+        
+        result = self.test_endpoint(endpoint, data={
+            "message": "'; DROP TABLE users; --",
+            "user_id": "test-user"
+        })
+        result.test_name = "Chat - SQL Injection Attempt"
+        error_tests.append(result)
+        
+        # Test XSS attempt
+        endpoint = APIEndpoint(
+            method="POST",
+            path="/api/chat",
+            description="Chat with XSS attempt",
+            expected_status=200  # Should be handled gracefully
+        )
+        
+        result = self.test_endpoint(endpoint, data={
+            "message": "<script>alert('xss')</script>",
+            "user_id": "test-user"
+        })
+        result.test_name = "Chat - XSS Attempt"
+        error_tests.append(result)
+        
+        # Test extremely long message
+        endpoint = APIEndpoint(
+            method="POST",
+            path="/api/chat",
+            description="Chat with extremely long message",
+            expected_status=400
+        )
+        
+        result = self.test_endpoint(endpoint, data={
+            "message": "x" * 10000,  # 10k characters
+            "user_id": "test-user"
+        })
+        result.test_name = "Chat - Extremely Long Message"
+        error_tests.append(result)
+        
+        # Test invalid file extension
+        endpoint = APIEndpoint(
+            method="POST",
+            path="/api/files",
+            description="Upload file with invalid extension",
+            expected_status=400
+        )
+        
+        result = self.test_endpoint(endpoint, data={
+            "filename": "malware.exe",
+            "file_size": 1024,
+            "user_id": "test-user"
+        })
+        result.test_name = "File Upload - Invalid Extension"
+        error_tests.append(result)
+        
+        # Test negative file size
+        endpoint = APIEndpoint(
+            method="POST",
+            path="/api/files",
+            description="Upload file with negative size",
+            expected_status=400
+        )
+        
+        result = self.test_endpoint(endpoint, data={
+            "filename": "test.pdf",
+            "file_size": -1024,
+            "user_id": "test-user"
+        })
+        result.test_name = "File Upload - Negative Size"
+        error_tests.append(result)
+        
+        # Test quiz with invalid difficulty
+        endpoint = APIEndpoint(
+            method="POST",
+            path="/api/quiz/generate",
+            description="Generate quiz with invalid difficulty",
+            expected_status=400
+        )
+        
+        result = self.test_endpoint(endpoint, data={
+            "num_questions": 5,
+            "difficulty": "impossible",
+            "user_id": "test-user"
+        })
+        result.test_name = "Quiz Generation - Invalid Difficulty"
+        error_tests.append(result)
+        
+        # Test quiz with too many questions
+        endpoint = APIEndpoint(
+            method="POST",
+            path="/api/quiz/generate",
+            description="Generate quiz with too many questions",
+            expected_status=400
+        )
+        
+        result = self.test_endpoint(endpoint, data={
+            "num_questions": 100,
+            "difficulty": "intermediate",
+            "user_id": "test-user"
+        })
+        result.test_name = "Quiz Generation - Too Many Questions"
+        error_tests.append(result)
+        
         self.test_results.extend(error_tests)
         return error_tests
     

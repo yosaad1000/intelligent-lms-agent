@@ -1,0 +1,987 @@
+components:
+  examples:
+    ChatMessageExample:
+      summary: Basic chat message
+      value:
+        message: What is machine learning?
+        subject_id: cs101
+    ChatWithDocumentExample:
+      summary: Chat about uploaded document
+      value:
+        conversation_id: conv-123e4567-e89b-12d3-a456-426614174000
+        message: Summarize the key points from my physics notes
+    FileUploadExample:
+      summary: Upload PDF file
+      value:
+        file_size: 2048576
+        filename: machine_learning_lecture.pdf
+        subject_id: cs101
+    QuizGenerationExample:
+      summary: Generate quiz from documents
+      value:
+        difficulty: intermediate
+        num_questions: 5
+        subject_id: physics101
+  responses:
+    BadRequest:
+      content:
+        application/json:
+          example:
+            error:
+              code: VALIDATION_ERROR
+              details:
+                field: message
+                reason: Required field missing
+              message: The provided data is invalid
+              timestamp: '2024-01-01T12:00:00Z'
+            success: false
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: Bad Request - Invalid input data
+    Forbidden:
+      content:
+        application/json:
+          example:
+            error:
+              code: FORBIDDEN
+              details: {}
+              message: You don't have permission to access this resource
+              timestamp: '2024-01-01T12:00:00Z'
+            success: false
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: Forbidden - Access denied
+    InternalServerError:
+      content:
+        application/json:
+          example:
+            error:
+              code: INTERNAL_ERROR
+              details: {}
+              message: An unexpected error occurred. Please try again.
+              timestamp: '2024-01-01T12:00:00Z'
+            success: false
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: Internal Server Error
+    NotFound:
+      content:
+        application/json:
+          example:
+            error:
+              code: RESOURCE_NOT_FOUND
+              details:
+                resource_id: conv-123
+                resource_type: conversation
+              message: The requested resource could not be found
+              timestamp: '2024-01-01T12:00:00Z'
+            success: false
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: Not Found - Resource not found
+    ServiceUnavailable:
+      content:
+        application/json:
+          example:
+            error:
+              code: SERVICE_UNAVAILABLE
+              details:
+                service: bedrock
+              message: A service is temporarily unavailable. Please try again later.
+              timestamp: '2024-01-01T12:00:00Z'
+            success: false
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: Service Unavailable - External service error
+    Unauthorized:
+      content:
+        application/json:
+          example:
+            error:
+              code: UNAUTHORIZED
+              details: {}
+              message: Please log in to access this resource
+              timestamp: '2024-01-01T12:00:00Z'
+            success: false
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: Unauthorized - Authentication required
+  schemas:
+    ChatMessageRequest:
+      properties:
+        conversation_id:
+          description: Existing conversation ID
+          example: conv-123e4567-e89b-12d3-a456-426614174000
+          type: string
+        message:
+          description: Chat message content
+          example: What is machine learning?
+          maxLength: 5000
+          minLength: 1
+          type: string
+        subject_id:
+          description: Subject context for the chat
+          example: cs101
+          type: string
+        user_id:
+          description: User ID (for testing without auth)
+          example: user-123
+          type: string
+      required:
+      - message
+      type: object
+    ChatMessageResponse:
+      properties:
+        agent_metadata:
+          description: Agent metadata
+          type: object
+        bedrock_agent_used:
+          description: Whether Bedrock Agent was used
+          example: true
+          type: boolean
+        citations:
+          description: Source citations
+          items:
+            $ref: '#/components/schemas/Citation'
+          type: array
+        conversation_id:
+          description: Conversation ID
+          example: conv-123e4567-e89b-12d3-a456-426614174000
+          type: string
+        rag_documents_used:
+          description: Number of RAG documents used
+          example: 3
+          minimum: 0
+          type: integer
+        rag_enhanced:
+          description: Whether RAG was used
+          example: true
+          type: boolean
+        response:
+          description: AI response content
+          example: Machine learning is a subset of artificial intelligence...
+          type: string
+        subject_context:
+          description: Subject context
+          example: cs101
+          type: string
+        success:
+          description: Whether the request was successful
+          example: true
+          type: boolean
+        timestamp:
+          description: Response timestamp
+          format: date-time
+          type: string
+      required:
+      - success
+      - response
+      - conversation_id
+      - timestamp
+      type: object
+    Citation:
+      properties:
+        chunk_index:
+          description: Chunk index in document
+          example: 2
+          minimum: 0
+          type: integer
+        page:
+          description: Page number if available
+          example: 15
+          minimum: 1
+          type: integer
+        score:
+          description: Relevance score
+          example: 0.95
+          maximum: 1
+          minimum: 0
+          type: number
+        source:
+          description: Source document name
+          example: machine_learning_basics.pdf
+          type: string
+      required:
+      - source
+      type: object
+    ErrorDetail:
+      properties:
+        code:
+          description: Error code
+          example: VALIDATION_ERROR
+          type: string
+        details:
+          description: Additional error details
+          example:
+            field: email
+            reason: Invalid format
+          type: object
+        message:
+          description: User-friendly error message
+          example: The provided data is invalid
+          type: string
+        timestamp:
+          description: Error timestamp
+          example: '2024-01-01T12:00:00Z'
+          format: date-time
+          type: string
+      required:
+      - code
+      - message
+      - timestamp
+      type: object
+    ErrorResponse:
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+        success:
+          description: Always false for error responses
+          enum:
+          - false
+          type: boolean
+      required:
+      - success
+      - error
+      type: object
+    FileUploadRequest:
+      properties:
+        file_size:
+          description: File size in bytes
+          example: 2048576
+          maximum: 10485760
+          minimum: 1
+          type: integer
+        filename:
+          description: Original filename
+          example: lecture_notes.pdf
+          maxLength: 255
+          minLength: 1
+          type: string
+        subject_id:
+          description: Associated subject ID
+          example: physics101
+          type: string
+        user_id:
+          description: User ID (for testing without auth)
+          example: user-123
+          type: string
+      required:
+      - filename
+      - file_size
+      type: object
+    FileUploadResponse:
+      properties:
+        file_id:
+          description: Unique file ID
+          example: file-123e4567-e89b-12d3-a456-426614174000
+          type: string
+        process_url:
+          description: URL to trigger processing
+          example: /api/files/process
+          type: string
+        status:
+          description: Upload status
+          example: ready_for_upload
+          type: string
+        success:
+          example: true
+          type: boolean
+        timestamp:
+          format: date-time
+          type: string
+        upload_url:
+          description: Presigned URL for file upload
+          example: https://s3.amazonaws.com/bucket/key?signature=...
+          format: uri
+          type: string
+      required:
+      - success
+      - file_id
+      - upload_url
+      - status
+      - process_url
+      type: object
+    HealthResponse:
+      properties:
+        services:
+          description: Individual service statuses
+          example:
+            bedrock: healthy
+            dynamodb: healthy
+            pinecone: configured
+            s3: healthy
+          type: object
+        status:
+          description: Overall system status
+          enum:
+          - healthy
+          - degraded
+          - unhealthy
+          example: healthy
+          type: string
+        success:
+          example: true
+          type: boolean
+        timestamp:
+          format: date-time
+          type: string
+      required:
+      - success
+      - status
+      - services
+      - timestamp
+      type: object
+  securitySchemes:
+    BearerAuth:
+      bearerFormat: JWT
+      description: JWT token for user authentication
+      scheme: bearer
+      type: http
+info:
+  contact:
+    email: support@lms-api.com
+    name: LMS API Support
+  description: "\n# Learning Management System AI Backend API\n\nA comprehensive API\
+    \ for an AI-powered Learning Management System built on AWS Bedrock AgentCore.\n\
+    \n## Features\n\n- **AI Chat**: Intelligent conversations with RAG-enhanced responses\n\
+    - **File Processing**: Upload and process educational documents with AWS Textract\n\
+    - **Quiz Generation**: AI-generated quizzes from uploaded content\n- **Voice Interviews**:\
+    \ Real-time voice interviews with AI\n- **Learning Analytics**: Track progress\
+    \ and generate insights\n- **Multi-language Support**: Translation and language\
+    \ detection\n\n## Authentication\n\nThe API uses JWT tokens for authentication.\
+    \ Include the token in the Authorization header:\n\n```\nAuthorization: Bearer\
+    \ <your-jwt-token>\n```\n\nFor testing purposes, you can also include `user_id`\
+    \ in the request body.\n\n## Error Handling\n\nAll errors follow a standardized\
+    \ format:\n\n```json\n{\n  \"success\": false,\n  \"error\": {\n    \"code\":\
+    \ \"ERROR_CODE\",\n    \"message\": \"User-friendly error message\",\n    \"details\"\
+    : {},\n    \"timestamp\": \"2024-01-01T00:00:00Z\"\n  }\n}\n```\n\n## Rate Limiting\n\
+    \nAPI requests are rate-limited to prevent abuse. Current limits:\n- 100 requests\
+    \ per minute per user\n- 10 file uploads per hour per user\n- 5 concurrent voice\
+    \ interview sessions per user\n            "
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: LMS AI Backend API
+  version: 1.0.0
+openapi: 3.0.3
+paths:
+  /api/analytics:
+    get:
+      description: Retrieve learning progress and analytics for the user
+      operationId: getLearningAnalytics
+      parameters:
+      - description: User ID (for testing without auth)
+        example: user-123
+        in: query
+        name: user_id
+        schema:
+          type: string
+      - description: Subject filter
+        example: physics101
+        in: query
+        name: subject_id
+        schema:
+          type: string
+      - description: Start date (ISO format)
+        example: '2024-01-01'
+        in: query
+        name: date_from
+        schema:
+          format: date
+          type: string
+      - description: End date (ISO format)
+        example: '2024-01-31'
+        in: query
+        name: date_to
+        schema:
+          format: date
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  average_score:
+                    type: number
+                  concept_masteries:
+                    items:
+                      properties:
+                        concept:
+                          type: string
+                        interaction_count:
+                          type: integer
+                        last_interaction:
+                          format: date-time
+                          type: string
+                        mastery_level:
+                          maximum: 1
+                          minimum: 0
+                          type: number
+                      type: object
+                    type: array
+                  documents_processed:
+                    type: integer
+                  quizzes_taken:
+                    type: integer
+                  recommendations:
+                    items:
+                      type: string
+                    type: array
+                  study_time_hours:
+                    type: number
+                  success:
+                    type: boolean
+                  timestamp:
+                    format: date-time
+                    type: string
+                  total_interactions:
+                    type: integer
+                  user_id:
+                    type: string
+                type: object
+          description: Analytics retrieved successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Get learning analytics
+      tags:
+      - Analytics
+  /api/chat:
+    post:
+      description: Send a message to the AI assistant and get a response with RAG
+        enhancement
+      operationId: sendChatMessage
+      requestBody:
+        content:
+          application/json:
+            examples:
+              basic:
+                $ref: '#/components/examples/ChatMessageExample'
+              document:
+                $ref: '#/components/examples/ChatWithDocumentExample'
+            schema:
+              $ref: '#/components/schemas/ChatMessageRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessageResponse'
+          description: Chat response generated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      summary: Send chat message
+      tags:
+      - Chat
+  /api/chat/history:
+    get:
+      description: Retrieve conversation history for a user or specific conversation
+      operationId: getChatHistory
+      parameters:
+      - description: User ID (for testing without auth)
+        example: user-123
+        in: query
+        name: user_id
+        schema:
+          type: string
+      - description: Specific conversation ID
+        example: conv-123e4567-e89b-12d3-a456-426614174000
+        in: query
+        name: conversation_id
+        schema:
+          type: string
+      - description: Maximum number of messages to return
+        in: query
+        name: limit
+        schema:
+          default: 20
+          maximum: 100
+          minimum: 1
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  conversation_id:
+                    type: string
+                  messages:
+                    items:
+                      properties:
+                        citations:
+                          items:
+                            $ref: '#/components/schemas/Citation'
+                          type: array
+                        content:
+                          type: string
+                        message_id:
+                          type: string
+                        message_type:
+                          enum:
+                          - user
+                          - assistant
+                          type: string
+                        timestamp:
+                          type: integer
+                      type: object
+                    type: array
+                  success:
+                    type: boolean
+                  total_messages:
+                    type: integer
+                type: object
+          description: Conversation history retrieved successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Get conversation history
+      tags:
+      - Chat
+  /api/files:
+    get:
+      description: Retrieve list of files uploaded by the user
+      operationId: getUserFiles
+      parameters:
+      - description: User ID (for testing without auth)
+        example: user-123
+        in: query
+        name: user_id
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  files:
+                    items:
+                      properties:
+                        file_id:
+                          type: string
+                        file_size:
+                          type: integer
+                        filename:
+                          type: string
+                        processing_status:
+                          type: string
+                        status:
+                          type: string
+                        upload_timestamp:
+                          type: string
+                      type: object
+                    type: array
+                  success:
+                    type: boolean
+                  total:
+                    type: integer
+                type: object
+          description: Files retrieved successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Get user files
+      tags:
+      - Files
+    post:
+      description: Generate presigned URL for file upload and create file metadata
+      operationId: uploadFile
+      requestBody:
+        content:
+          application/json:
+            examples:
+              pdf:
+                $ref: '#/components/examples/FileUploadExample'
+            schema:
+              $ref: '#/components/schemas/FileUploadRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadResponse'
+          description: Upload URL generated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Upload file
+      tags:
+      - Files
+  /api/files/process:
+    post:
+      description: Process uploaded file for RAG with text extraction and vector storage
+      operationId: processFile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                file_id:
+                  description: File ID to process
+                  example: file-123e4567-e89b-12d3-a456-426614174000
+                  type: string
+                user_id:
+                  description: User ID (for testing without auth)
+                  example: user-123
+                  type: string
+              required:
+              - file_id
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  chunks_created:
+                    type: integer
+                  file_id:
+                    type: string
+                  message:
+                    type: string
+                  status:
+                    type: string
+                  success:
+                    type: boolean
+                  vectors_stored:
+                    type: integer
+                type: object
+          description: File processed successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Processing failed
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Process uploaded file
+      tags:
+      - Files
+  /api/interview/start:
+    post:
+      description: Start a voice interview session and get WebSocket connection details
+      operationId: startVoiceInterview
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                duration_minutes:
+                  default: 15
+                  description: Interview duration in minutes
+                  maximum: 60
+                  minimum: 5
+                  type: integer
+                interview_type:
+                  default: general
+                  description: Type of interview
+                  example: general
+                  type: string
+                subject_id:
+                  description: Subject context
+                  example: physics101
+                  type: string
+                user_id:
+                  description: User ID (for testing without auth)
+                  example: user-123
+                  type: string
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  initial_question:
+                    type: string
+                  session_id:
+                    type: string
+                  success:
+                    type: boolean
+                  timestamp:
+                    format: date-time
+                    type: string
+                  websocket_url:
+                    format: uri
+                    type: string
+                type: object
+          description: Interview session started successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Start voice interview
+      tags:
+      - Voice
+  /api/quiz/generate:
+    post:
+      description: Generate AI-powered quiz questions from uploaded documents
+      operationId: generateQuiz
+      requestBody:
+        content:
+          application/json:
+            examples:
+              basic:
+                $ref: '#/components/examples/QuizGenerationExample'
+            schema:
+              properties:
+                difficulty:
+                  default: intermediate
+                  description: Question difficulty level
+                  enum:
+                  - beginner
+                  - intermediate
+                  - advanced
+                  type: string
+                document_ids:
+                  description: Specific documents to use
+                  example:
+                  - file-123
+                  - file-456
+                  items:
+                    type: string
+                  type: array
+                num_questions:
+                  default: 5
+                  description: Number of questions to generate
+                  maximum: 20
+                  minimum: 1
+                  type: integer
+                subject_id:
+                  description: Subject context
+                  example: physics101
+                  type: string
+                user_id:
+                  description: User ID (for testing without auth)
+                  example: user-123
+                  type: string
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  created_at:
+                    format: date-time
+                    type: string
+                  questions:
+                    items:
+                      properties:
+                        difficulty:
+                          type: string
+                        explanation:
+                          type: string
+                        options:
+                          items:
+                            properties:
+                              is_correct:
+                                type: boolean
+                              option_id:
+                                type: string
+                              text:
+                                type: string
+                            type: object
+                          type: array
+                        question_id:
+                          type: string
+                        question_text:
+                          type: string
+                        source_document:
+                          type: string
+                      type: object
+                    type: array
+                  quiz_id:
+                    type: string
+                  subject_id:
+                    type: string
+                  success:
+                    type: boolean
+                  timestamp:
+                    format: date-time
+                    type: string
+                type: object
+          description: Quiz generated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      summary: Generate quiz
+      tags:
+      - Quiz
+  /api/quiz/submit:
+    post:
+      description: Submit quiz answers and get scoring results
+      operationId: submitQuiz
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                answers:
+                  description: Question ID to answer mapping
+                  example:
+                    q1: A
+                    q2: C
+                    q3: B
+                  type: object
+                quiz_id:
+                  description: Quiz ID
+                  example: quiz-123e4567-e89b-12d3-a456-426614174000
+                  type: string
+                user_id:
+                  description: User ID (for testing without auth)
+                  example: user-123
+                  type: string
+              required:
+              - quiz_id
+              - answers
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  correct_answers:
+                    type: integer
+                  quiz_id:
+                    type: string
+                  results:
+                    items:
+                      properties:
+                        correct_answer:
+                          type: string
+                        explanation:
+                          type: string
+                        is_correct:
+                          type: boolean
+                        question_id:
+                          type: string
+                        user_answer:
+                          type: string
+                      type: object
+                    type: array
+                  score:
+                    maximum: 100
+                    minimum: 0
+                    type: number
+                  submitted_at:
+                    format: date-time
+                    type: string
+                  success:
+                    type: boolean
+                  timestamp:
+                    format: date-time
+                    type: string
+                  total_questions:
+                    type: integer
+                type: object
+          description: Quiz submitted and scored successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Submit quiz answers
+      tags:
+      - Quiz
+  /health:
+    get:
+      description: Check the health status of the API and its dependencies
+      operationId: getHealth
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                services:
+                  bedrock: healthy
+                  dynamodb: healthy
+                  pinecone: configured
+                  s3: healthy
+                status: healthy
+                success: true
+                timestamp: '2024-01-01T12:00:00Z'
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+          description: System is healthy
+        '503':
+          content:
+            application/json:
+              example:
+                services:
+                  bedrock: healthy
+                  dynamodb: healthy
+                  pinecone: not configured
+                  s3: 'unhealthy: Access denied'
+                status: degraded
+                success: true
+                timestamp: '2024-01-01T12:00:00Z'
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+          description: System is degraded or unhealthy
+      security: []
+      summary: Health check
+      tags:
+      - Health
+security:
+- BearerAuth: []
+servers:
+- description: Production server
+  url: https://api.lms.example.com
+- description: Staging server
+  url: https://staging-api.lms.example.com
+- description: Local development server
+  url: http://localhost:3000
+tags:
+- description: System health and status endpoints
+  name: Health
+- description: AI chat and conversation management
+  name: Chat
+- description: File upload and processing
+  name: Files
+- description: Quiz generation and submission
+  name: Quiz
+- description: Voice interview functionality
+  name: Voice
+- description: Learning analytics and progress tracking
+  name: Analytics

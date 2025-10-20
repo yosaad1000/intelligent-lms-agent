@@ -395,3 +395,75 @@ def log_api_response(response: Dict[str, Any], duration_ms: float = None) -> Non
             pass
     
     logger.info("API Response", extra=response_info)
+
+
+def create_lambda_response(
+    status_code: int,
+    body: Dict[str, Any],
+    headers: Dict[str, str] = None
+) -> Dict[str, Any]:
+    """
+    Create standardized Lambda response with proper headers and formatting
+    
+    Args:
+        status_code: HTTP status code
+        body: Response body dictionary
+        headers: Additional headers
+        
+    Returns:
+        Lambda response dictionary
+    """
+    
+    response_headers = get_cors_headers()
+    if headers:
+        response_headers.update(headers)
+    
+    return {
+        'statusCode': status_code,
+        'headers': response_headers,
+        'body': json.dumps(body, default=str)
+    }
+
+
+def handle_validation_error(error: Exception, field: str = None) -> Dict[str, Any]:
+    """
+    Handle validation errors and return standardized response
+    
+    Args:
+        error: Validation error
+        field: Field that caused the error
+        
+    Returns:
+        Lambda response for validation error
+    """
+    
+    validation_exception = ValidationException(
+        message=str(error),
+        field=field,
+        details={'validation_error': str(error)}
+    )
+    
+    error_response = create_error_response(validation_exception)
+    return create_lambda_response(400, error_response)
+
+
+def handle_aws_service_error(service: str, error: Exception) -> Dict[str, Any]:
+    """
+    Handle AWS service errors and return standardized response
+    
+    Args:
+        service: AWS service name
+        error: AWS service error
+        
+    Returns:
+        Lambda response for AWS service error
+    """
+    
+    aws_exception = AWSServiceException(
+        service=service,
+        message=str(error),
+        aws_error_code=getattr(error, 'response', {}).get('Error', {}).get('Code', 'Unknown')
+    )
+    
+    error_response = create_error_response(aws_exception)
+    return create_lambda_response(503, error_response)
