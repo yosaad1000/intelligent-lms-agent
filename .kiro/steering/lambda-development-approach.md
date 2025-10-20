@@ -1,59 +1,60 @@
-# Lambda Development Approach - Serverless Backend
+# Bedrock AgentCore Development Approach - Managed AI Backend
 
-## Pure Lambda Development Philosophy
+## AgentCore-First Development Philosophy
 
-### Serverless-First Approach
-- **Individual Lambda Functions**: Each service as independent Lambda
-- **API Gateway Integration**: RESTful endpoints with Lambda proxy integration
-- **Event-Driven Architecture**: S3 events, DynamoDB streams, SQS triggers
-- **Stateless Design**: All state in AWS managed services
-- **SAM Deployment**: Infrastructure as Code with AWS SAM
+### Managed AI-First Approach
+- **Bedrock AgentCore**: Production-grade agent deployment platform
+- **Lambda Action Groups**: Custom tools called by the agent
+- **Knowledge Base Integration**: Managed RAG with S3 data sources
+- **Bedrock Flows**: Visual workflow orchestration
+- **Built-in Features**: Memory, session management, monitoring included
 
 ### Environment Configuration
-- AWS credentials and service config in environment variables
-- Lambda environment variables for runtime configuration
-- Secrets Manager for sensitive data (API keys, tokens)
-- Parameter Store for application configuration
+- Bedrock Agent IAM roles for service access
+- Lambda action group environment variables
+- Secrets Manager for API keys and external service credentials
+- Agent configuration through Bedrock console or SDK
+- Knowledge Base data source configuration
 
 ### Development Workflow
-1. **Local Testing**: SAM local for Lambda function testing
-2. **Unit Testing**: Comprehensive test coverage for each Lambda
-3. **Integration Testing**: Real AWS services integration
-4. **SAM Deployment**: Infrastructure and code deployment together
-5. **API Testing**: API Gateway endpoints with Lambda integration
+1. **Agent Creation**: Create and configure Bedrock Agent via console/SDK
+2. **Action Group Development**: Build Lambda functions as agent tools
+3. **Knowledge Base Setup**: Configure S3 data sources and vector storage
+4. **Agent Testing**: Test agent via Bedrock console or SDK
+5. **Production Deployment**: Create agent version and production alias
 
 ## Implementation Development Order
 
-### Phase 1: Foundation (Tasks 1-3)
-1. **SAM Setup**: Lambda functions structure and SAM templates
-2. **Authentication**: Lambda authorizer with Supabase JWT
-3. **Database**: DynamoDB tables and access patterns
+### Phase 1: Bedrock Agent Foundation (Tasks 1-3)
+1. **Agent Creation**: Create LMS agent on Bedrock AgentCore
+2. **Knowledge Base Setup**: S3 data source and vector storage
+3. **Basic Testing**: Validate agent responses and knowledge retrieval
 
-### Phase 2: Core Lambda Functions (Tasks 4-5)
-1. **File Processing Lambda**: Upload, text extraction, RAG processing
-2. **AWS Integration**: S3, DynamoDB, Bedrock, Pinecone
+### Phase 2: Core Action Groups (Tasks 4-5)
+1. **Document Processor**: Textract + Comprehend integration
+2. **Knowledge Base Sync**: Automated document ingestion pipeline
 
-### Phase 3: AI Lambda Functions (Tasks 6-8)
-1. **AI Chat Lambda**: Conversation management with Bedrock Agents
-2. **Quiz Generator Lambda**: AI-powered quiz creation
-3. **Voice Interview Lambda**: Real-time audio processing
+### Phase 3: AI Action Groups (Tasks 6-8)
+1. **Quiz Generator**: Content-based quiz creation
+2. **Analytics Tracker**: Learning progress monitoring
+3. **Voice Processor**: Transcribe integration for interviews
 
-### Phase 4: Advanced Features (Tasks 9-10)
-1. **Analytics Lambda**: Learning progress and recommendations
-2. **Integration Lambda**: Teacher dashboard and assignments
+### Phase 4: Advanced Workflows (Tasks 9-10)
+1. **Bedrock Flows**: Complex conditional logic workflows
+2. **Multi-Agent Coordination**: Specialized agent interactions
 
-### Phase 5: Production Ready (Tasks 11-14)
-1. **API Documentation**: OpenAPI specs for API Gateway
-2. **Performance Optimization**: Lambda cold start optimization
-3. **Monitoring**: CloudWatch dashboards and alarms
-4. **Production Deployment**: Multi-environment SAM deployment
+### Phase 5: Production Deployment (Tasks 11-14)
+1. **Agent Versioning**: Production aliases and version control
+2. **Frontend Integration**: React app with agent runtime
+3. **Monitoring**: CloudWatch + Bedrock agent metrics
+4. **Multi-Environment**: Dev/staging/prod agent deployments
 
 ## Testing Strategy
-- **Unit Tests**: Individual Lambda function testing with mocks
-- **Integration Tests**: Real AWS services with test data
-- **SAM Local Testing**: Local Lambda execution environment
-- **API Testing**: API Gateway endpoints with test requests
-- **End-to-End**: Complete user workflows through API Gateway
+- **Agent Testing**: Bedrock console testing with sample queries
+- **Action Group Tests**: Individual Lambda function testing
+- **Knowledge Base Tests**: Document ingestion and retrieval validation
+- **Integration Tests**: Agent + action groups + knowledge base workflows
+- **End-to-End**: Frontend → API Gateway → Agent → Response flow
 
 ## Deployment Architecture
 - **SAM Templates**: Complete infrastructure definition

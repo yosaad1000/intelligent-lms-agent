@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangGraph Workflow Testing Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .metadata {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .workflow-info {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .status-warning { background-color: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 LangGraph Workflow Testing Interface</h1>
+        <p>Test the LangChain + LangGraph AI agent workflow with AWS services integration</p>
+        
+        <div class="workflow-info">
+            <h3>🔄 Workflow Status</h3>
+            <div id="workflowStatus">
+                <span class="status-indicator status-warning"></span>
+                <span>Checking workflow status...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Testing Section -->
+    <div class="container">
+        <div class="test-section">
+            <h2>💬 LangGraph Chat Testing</h2>
+            <div class="form-group">
+                <label for="userId">User ID:</label>
+                <input type="text" id="userId" value="test-user-123" placeholder="Enter user ID">
+            </div>
+            <div class="form-group">
+                <label for="sessionId">Session ID (optional):</label>
+                <input type="text" id="sessionId" placeholder="Leave empty for auto-generation">
+            </div>
+            <div class="form-group">
+                <label for="subjectId">Subject ID (optional):</label>
+                <input type="text" id="subjectId" placeholder="e.g., physics_101">
+            </div>
+            <div class="form-group">
+                <label for="chatMessage">Message:</label>
+                <textarea id="chatMessage" placeholder="Enter your message to test the LangGraph workflow...">Summarize my physics notes about Newton's laws</textarea>
+            </div>
+            <button onclick="testLangGraphChat()">🚀 Test LangGraph Chat</button>
+            <button onclick="testBedrockFallback()">🔄 Test Bedrock Fallback</button>
+            <div id="chatResponse" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Intent Detection Testing -->
+    <div class="container">
+        <div class="test-section">
+            <h2>🎯 Intent Detection Testing</h2>
+            <div class="form-group">
+                <label for="intentMessage">Test Message:</label>
+                <select id="intentTestType" onchange="updateIntentMessage()">
+                    <option value="summarize">Summarization Intent</option>
+                    <option value="question">Question Intent</option>
+                    <option value="quiz">Quiz Generation Intent</option>
+                    <option value="translate">Translation Intent</option>
+                    <option value="analyze">Analysis Intent</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <textarea id="intentMessage" placeholder="Test message for intent detection...">Can you summarize the key points from my uploaded documents?</textarea>
+            </div>
+            <button onclick="testIntentDetection()">🎯 Test Intent Detection</button>
+            <div id="intentResponse" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Workflow Information -->
+    <div class="container">
+        <div class="test-section">
+            <h2>ℹ️ Workflow Information</h2>
+            <button onclick="getWorkflowInfo()">📊 Get Workflow Info</button>
+            <button onclick="toggleWorkflow()">🔄 Toggle Workflow Type</button>
+            <div id="workflowInfo" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Conversation History -->
+    <div class="container">
+        <div class="test-section">
+            <h2>📜 Conversation History</h2>
+            <div class="form-group">
+                <label for="historyUserId">User ID:</label>
+                <input type="text" id="historyUserId" value="test-user-123">
+            </div>
+            <div class="form-group">
+                <label for="historySessionId">Session ID (optional):</label>
+                <input type="text" id="historySessionId" placeholder="Leave empty to get all sessions">
+            </div>
+            <button onclick="getConversationHistory()">📜 Get History</button>
+            <div id="historyResponse" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- AWS Services Testing -->
+    <div class="container">
+        <div class="test-section">
+            <h2>☁️ AWS Services Testing</h2>
+            <div class="form-group">
+                <label for="awsTestType">Service to Test:</label>
+                <select id="awsTestType">
+                    <option value="comprehend">Amazon Comprehend (Language/Intent Detection)</option>
+                    <option value="translate">Amazon Translate</option>
+                    <option value="bedrock">Amazon Bedrock LLM</option>
+                    <option value="knowledge_base">Bedrock Knowledge Base</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="awsTestText">Test Text:</label>
+                <textarea id="awsTestText" placeholder="Enter text to test AWS services...">Hello, can you translate this to Spanish and analyze the sentiment?</textarea>
+            </div>
+            <button onclick="testAWSServices()">☁️ Test AWS Services</button>
+            <div id="awsResponse" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'https://your-api-gateway-url.amazonaws.com/dev';
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            checkWorkflowStatus();
+        });
+
+        // Intent message templates
+        const intentMessages = {
+            summarize: "Can you summarize the key points from my uploaded documents?",
+            question: "What are Newton's three laws of motion?",
+            quiz: "Generate a quiz about physics with 5 questions",
+            translate: "Please translate this text to Spanish: Hello, how are you?",
+            analyze: "Analyze my learning progress in physics over the last week"
+        };
+
+        function updateIntentMessage() {
+            const testType = document.getElementById('intentTestType').value;
+            document.getElementById('intentMessage').value = intentMessages[testType];
+        }
+
+        async function checkWorkflowStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/chat/workflow`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('workflowStatus').innerHTML = `
+                        <span class="status-indicator status-online"></span>
+                        <span>LangGraph Workflow Online - ${data.workflow_info.workflow_type}</span>
+                    `;
+                } else {
+                    document.getElementById('workflowStatus').innerHTML = `
+                        <span class="status-indicator status-offline"></span>
+                        <span>Workflow Offline: ${data.error}</span>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('workflowStatus').innerHTML = `
+                    <span class="status-indicator status-offline"></span>
+                    <span>Connection Error: ${error.message}</span>
+                `;
+            }
+        }
+
+        async function testLangGraphChat() {
+            const userId = document.getElementById('userId').value;
+            const sessionId = document.getElementById('sessionId').value;
+            const subjectId = document.getElementById('subjectId').value;
+            const message = document.getElementById('chatMessage').value;
+
+            if (!message.trim()) {
+                alert('Please enter a message');
+                return;
+            }
+
+            const responseDiv = document.getElementById('chatResponse');
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response info';
+            responseDiv.textContent = 'Processing with LangGraph workflow...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/chat/langgraph`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        message: message,
+                        session_id: sessionId || undefined,
+                        subject_id: subjectId || undefined
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `
+                        <strong>✅ LangGraph Response:</strong><br>
+                        ${data.response}<br><br>
+                        <div class="metadata">
+                            <strong>Workflow Metadata:</strong><br>
+                            • Session ID: ${data.session_id}<br>
+                            • Intent: ${data.workflow_metadata?.intent || 'N/A'}<br>
+                            • Language: ${data.workflow_metadata?.language || 'N/A'}<br>
+                            • Tools Used: ${data.workflow_metadata?.tools_used?.join(', ') || 'None'}<br>
+                            • RAG Documents: ${data.rag_documents_used}<br>
+                            • Citations: ${data.citations?.length || 0}<br>
+                            • Memory Type: ${data.memory_type}<br>
+                            • Timestamp: ${data.timestamp}
+                        </div>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `❌ Error: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `❌ Network Error: ${error.message}`;
+            }
+        }
+
+        async function testBedrockFallback() {
+            // Test the regular chat endpoint to trigger Bedrock fallback
+            const userId = document.getElementById('userId').value;
+            const message = document.getElementById('chatMessage').value;
+
+            if (!message.trim()) {
+                alert('Please enter a message');
+                return;
+            }
+
+            const responseDiv = document.getElementById('chatResponse');
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response info';
+            responseDiv.textContent = 'Testing Bedrock fallback...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        message: message
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `
+                        <strong>✅ Bedrock Fallback Response:</strong><br>
+                        ${data.response}<br><br>
+                        <div class="metadata">
+                            <strong>Metadata:</strong><br>
+                            • Agent Type: ${data.agent_metadata?.agent_type || 'bedrock'}<br>
+                            • Session ID: ${data.conversation_id}<br>
+                            • RAG Enhanced: ${data.rag_enhanced}<br>
+                            • Citations: ${data.citations?.length || 0}<br>
+                            • Timestamp: ${data.timestamp}
+                        </div>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `❌ Error: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `❌ Network Error: ${error.message}`;
+            }
+        }
+
+        async function testIntentDetection() {
+            const message = document.getElementById('intentMessage').value;
+            const userId = document.getElementById('userId').value;
+
+            if (!message.trim()) {
+                alert('Please enter a message');
+                return;
+            }
+
+            const responseDiv = document.getElementById('intentResponse');
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response info';
+            responseDiv.textContent = 'Testing intent detection...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/chat/langgraph`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        message: message
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `
+                        <strong>🎯 Intent Detection Results:</strong><br>
+                        • Detected Intent: <strong>${data.workflow_metadata?.intent || 'N/A'}</strong><br>
+                        • Language: ${data.workflow_metadata?.language || 'N/A'}<br>
+                        • Tools Used: ${data.workflow_metadata?.tools_used?.join(', ') || 'None'}<br><br>
+                        <strong>Response:</strong><br>
+                        ${data.response}
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `❌ Error: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `❌ Network Error: ${error.message}`;
+            }
+        }
+
+        async function getWorkflowInfo() {
+            const responseDiv = document.getElementById('workflowInfo');
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response info';
+            responseDiv.textContent = 'Getting workflow information...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/chat/workflow`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `
+                        <strong>📊 Workflow Information:</strong><br>
+                        <pre>${JSON.stringify(data.workflow_info, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `❌ Error: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `❌ Network Error: ${error.message}`;
+            }
+        }
+
+        async function toggleWorkflow() {
+            const responseDiv = document.getElementById('workflowInfo');
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response info';
+            responseDiv.textContent = 'Toggling workflow...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/chat/toggle`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        use_langgraph: true
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = `✅ ${data.message}`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `❌ Error: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `❌ Network Error: ${error.message}`;
+            }
+        }
+
+        async function getConversationHistory() {
+            const userId = document.getElementById('historyUserId').value;
+            const sessionId = document.getElementById('historySessionId').value;
+
+            const responseDiv = document.getElementById('historyResponse');
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response info';
+            responseDiv.textContent = 'Getting conversation history...';
+
+            try {
+                let url = `${API_BASE_URL}/api/chat/history?user_id=${userId}`;
+                if (sessionId) {
+                    url += `&session_id=${sessionId}`;
+                }
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `
+                        <strong>📜 Conversation History:</strong><br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `❌ Error: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `❌ Network Error: ${error.message}`;
+            }
+        }
+
+        async function testAWSServices() {
+            const testType = document.getElementById('awsTestType').value;
+            const testText = document.getElementById('awsTestText').value;
+
+            if (!testText.trim()) {
+                alert('Please enter test text');
+                return;
+            }
+
+            const responseDiv = document.getElementById('awsResponse');
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response info';
+            responseDiv.textContent = `Testing ${testType}...`;
+
+            // This would be implemented with specific AWS service endpoints
+            // For now, we'll test through the chat interface
+            try {
+                let testMessage = '';
+                switch (testType) {
+                    case 'comprehend':
+                        testMessage = `Analyze the language and sentiment of this text: "${testText}"`;
+                        break;
+                    case 'translate':
+                        testMessage = `Translate this text to Spanish: "${testText}"`;
+                        break;
+                    case 'bedrock':
+                        testMessage = `Using Bedrock LLM, respond to: "${testText}"`;
+                        break;
+                    case 'knowledge_base':
+                        testMessage = `Search knowledge base for: "${testText}"`;
+                        break;
+                }
+
+                const response = await fetch(`${API_BASE_URL}/api/chat/langgraph`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: 'test-aws-services',
+                        message: testMessage
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `
+                        <strong>☁️ AWS ${testType} Test Results:</strong><br>
+                        ${data.response}<br><br>
+                        <div class="metadata">
+                            <strong>Tools Used:</strong> ${data.workflow_metadata?.tools_used?.join(', ') || 'None'}<br>
+                            <strong>Intent:</strong> ${data.workflow_metadata?.intent || 'N/A'}<br>
+                            <strong>Language:</strong> ${data.workflow_metadata?.language || 'N/A'}
+                        </div>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `❌ Error: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `❌ Network Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,28 +1,30 @@
 # Technology Standards and Best Practices
 
-## Frontend Standards
-- **Framework**: Gradio (Python-based web interface)
-- **Design**: Clean, intuitive interface with tabs for different features
-- **Components**: File upload, chat interface, voice recording, quiz display
-- **Styling**: Gradio's built-in themes with custom CSS if needed
-- **Accessibility**: Gradio's built-in accessibility features
+## Agent Interface Standards
+- **Primary Interface**: Amazon Bedrock Agent Runtime API
+- **Testing Interface**: Bedrock Console for agent testing and validation
+- **API Integration**: RESTful endpoints via API Gateway for external access
+- **Documentation**: OpenAPI specifications for action groups
+- **Monitoring**: CloudWatch dashboards for agent performance
 
 ## Backend Standards
-- **Runtime**: Python 3.9+ application
-- **Framework**: Gradio + Bedrock Agents SDK
-- **Database**: DynamoDB for user data and chat history
-- **Storage**: S3 for file storage
-- **Deployment**: Single Python app (local development, EC2 for production)
+- **AI Core**: Amazon Bedrock AgentCore (fully managed)
+- **Runtime**: Python 3.9+ for Lambda action groups
+- **Framework**: LangGraph + LangChain for agent logic, deployed on Bedrock AgentCore
+- **Database**: DynamoDB for user data, built-in agent memory
+- **Storage**: S3 for files, Bedrock Knowledge Base for vectors
+- **Deployment**: Bedrock Agent + Lambda action groups via SAM
 
 ## AI/ML Standards
-- **Primary AI**: Amazon Bedrock Agents SDK for orchestration
-- **LLM**: Amazon Bedrock (Nova recommended)
-- **Knowledge Base**: Bedrock Knowledge Base with S3 data source
-- **Voice Processing**: Amazon Transcribe
-- **Agent Tools**: Custom Lambda functions as Bedrock Agent tools
+- **Primary AI**: Amazon Bedrock AgentCore (production-grade deployment)
+- **LLM**: Amazon Nova Micro (cost-effective for development), Nova Pro (production)
+- **Knowledge Base**: Managed Bedrock Knowledge Base with OpenSearch Serverless
+- **Voice Processing**: Amazon Transcribe with real-time streaming
+- **Agent Tools**: Lambda action groups with OpenAPI specifications
+- **Workflows**: LangGraph for complex conditional logic and workflow orchestration
 
 ## Security Standards
-- **Authentication**: AWS Cognito User Pools
+- **Authentication**: Supabase Auth (for demo/development), AWS Cognito (for production)
 - **Authorization**: JWT tokens, IAM roles
 - **Data Protection**: Encryption at rest and in transit
 - **API Security**: Rate limiting, CORS, request validation

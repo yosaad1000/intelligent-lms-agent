@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Interview Test Interface</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+        
+        .section h2 {
+            color: #2d3748;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .status.connected {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .status.disconnected {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+        
+        .status.interviewing {
+            background: #bee3f8;
+            color: #2a4365;
+            border: 1px solid #63b3ed;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            background: white;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+        
+        .message.system {
+            background: #edf2f7;
+            color: #4a5568;
+        }
+        
+        .message.user {
+            background: #e6fffa;
+            color: #234e52;
+        }
+        
+        .message.agent {
+            background: #fef5e7;
+            color: #744210;
+        }
+        
+        .message.error {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .record-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .record-button.recording {
+            background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .audio-level {
+            flex: 1;
+            height: 20px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .audio-level-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169, #f6ad55, #ed8936, #f56565);
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .metric {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .metric-label {
+            color: #718096;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Voice Interview Test Interface</h1>
+        
+        <!-- Connection Status -->
+        <div class="section">
+            <h2>🔗 Connection Status</h2>
+            <div id="connectionStatus" class="status disconnected">
+                Disconnected
+            </div>
+            <div class="form-group">
+                <label for="websocketUrl">WebSocket URL:</label>
+                <input type="text" id="websocketUrl" placeholder="wss://your-api-id.execute-api.region.amazonaws.com/dev">
+            </div>
+            <div class="form-group">
+                <label for="userId">User ID:</label>
+                <input type="text" id="userId" value="test_user_123" placeholder="Enter your user ID">
+            </div>
+            <button onclick="connectWebSocket()">Connect</button>
+            <button onclick="disconnectWebSocket()">Disconnect</button>
+        </div>
+        
+        <div class="grid">
+            <!-- Interview Setup -->
+            <div class="section">
+                <h2>🎯 Interview Setup</h2>
+                <div class="form-group">
+                    <label for="interviewTopic">Topic:</label>
+                    <input type="text" id="interviewTopic" value="Machine Learning" placeholder="e.g., Physics, Programming, etc.">
+                </div>
+                <div class="form-group">
+                    <label for="interviewType">Interview Type:</label>
+                    <select id="interviewType">
+                        <option value="technical">Technical</option>
+                        <option value="conceptual">Conceptual</option>
+                        <option value="general">General</option>
+                        <option value="practice">Practice</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="difficulty">Difficulty:</label>
+                    <select id="difficulty">
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate" selected>Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                    </select>
+                </div>
+                <button onclick="startInterview()" id="startBtn">Start Interview</button>
+                <button onclick="endInterview()" id="endBtn" disabled>End Interview</button>
+            </div>
+            
+            <!-- Audio Controls -->
+            <div class="section">
+                <h2>🎙️ Audio Controls</h2>
+                <div class="audio-controls">
+                    <button class="record-button" onclick="toggleRecording()" id="recordBtn">
+                        🎤
+                    </button>
+                    <div class="audio-level">
+                        <div class="audio-level-bar" id="audioLevelBar"></div>
+                    </div>
+                </div>
+                <div>
+                    <button onclick="testAudioPermissions()">Test Microphone</button>
+                    <button onclick="simulateAudioChunk()">Simulate Audio</button>
+                </div>
+                <div id="audioStatus" class="status disconnected">
+                    Microphone not initialized
+                </div>
+            </div>
+        </div>
+        
+        <!-- Interview Metrics -->
+        <div class="section">
+            <h2>📊 Interview Metrics</h2>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-value" id="questionCount">0</div>
+                    <div class="metric-label">Questions Asked</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="responseCount">0</div>
+                    <div class="metric-label">Responses Given</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="sessionDuration">0:00</div>
+                    <div class="metric-label">Session Duration</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="avgResponseTime">0s</div>
+                    <div class="metric-label">Avg Response Time</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Messages -->
+        <div class="section">
+            <h2>💬 Interview Conversation</h2>
+            <div id="messages" class="messages"></div>
+            <button onclick="clearMessages()">Clear Messages</button>
+            <button onclick="getInterviewStatus()">Get Status</button>
+        </div>
+        
+        <!-- Manual Testing -->
+        <div class="section">
+            <h2>🧪 Manual Testing</h2>
+            <div class="form-group">
+                <label for="testMessage">Test Message:</label>
+                <textarea id="testMessage" rows="3" placeholder="Enter a test message to send..."></textarea>
+            </div>
+            <button onclick="sendTestMessage()">Send Test Message</button>
+            <button onclick="testBedrock()">Test Bedrock Agent</button>
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let mediaRecorder = null;
+        let audioStream = null;
+        let isRecording = false;
+        let currentSessionId = null;
+        let interviewStartTime = null;
+        let questionCount = 0;
+        let responseCount = 0;
+        let lastQuestionTime = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Try to load WebSocket URL from environment or localStorage
+            const savedUrl = localStorage.getItem('websocketUrl');
+            if (savedUrl) {
+                document.getElementById('websocketUrl').value = savedUrl;
+            }
+            
+            addMessage('system', 'Voice Interview Test Interface loaded. Connect to WebSocket to begin.');
+        });
+        
+        function connectWebSocket() {
+            const url = document.getElementById('websocketUrl').value;
+            const userId = document.getElementById('userId').value;
+            
+            if (!url) {
+                addMessage('error', 'Please enter WebSocket URL');
+                return;
+            }
+            
+            try {
+                const wsUrl = `${url}?user_id=${encodeURIComponent(userId)}`;
+                websocket = new WebSocket(wsUrl);
+                
+                websocket.onopen = function(event) {
+                    updateConnectionStatus('connected', 'Connected to WebSocket');
+                    addMessage('system', 'WebSocket connected successfully');
+                    localStorage.setItem('websocketUrl', url);
+                };
+                
+                websocket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleWebSocketMessage(data);
+                    } catch (e) {
+                        addMessage('error', `Invalid message format: ${event.data}`);
+                    }
+                };
+                
+                websocket.onclose = function(event) {
+                    updateConnectionStatus('disconnected', 'Disconnected from WebSocket');
+                    addMessage('system', `WebSocket disconnected (Code: ${event.code})`);
+                };
+                
+                websocket.onerror = function(error) {
+                    addMessage('error', `WebSocket error: ${error.message || 'Connection failed'}`);
+                };
+                
+            } catch (error) {
+                addMessage('error', `Connection failed: ${error.message}`);
+            }
+        }
+        
+        function disconnectWebSocket() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
+            updateConnectionStatus('disconnected', 'Disconnected');
+        }
+        
+        function updateConnectionStatus(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = message;
+        }
+        
+        function handleWebSocketMessage(data) {
+            console.log('Received:', data);
+            
+            switch (data.type) {
+                case 'interview_started':
+                    currentSessionId = data.session_id;
+                    interviewStartTime = Date.now();
+                    questionCount = 1;
+                    lastQuestionTime = Date.now();
+                    updateConnectionStatus('interviewing', `Interview Active (Session: ${data.session_id.substring(0, 8)}...)`);
+                    addMessage('agent', `Interview started! ${data.initial_question}`);
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('endBtn').disabled = false;
+                    updateMetrics();
+                    break;
+                    
+                case 'transcription_complete':
+                    responseCount++;
+                    addMessage('user', `You said: "${data.transcribed_text}"`);
+                    if (data.next_question) {
+                        questionCount++;
+                        lastQuestionTime = Date.now();
+                        addMessage('agent', data.next_question);
+                    }
+                    if (data.analysis) {
+                        addMessage('system', `Analysis: Clarity ${data.analysis.clarity_score}%, Content ${data.analysis.content_accuracy}%`);
+                    }
+                    updateMetrics();
+                    break;
+                    
+                case 'interview_complete':
+                case 'interview_ended':
+                    currentSessionId = null;
+                    updateConnectionStatus('connected', 'Connected - Interview Ended');
+                    addMessage('system', 'Interview completed!');
+                    if (data.final_analysis || data.analysis) {
+                        const analysis = data.final_analysis || data.analysis;
+                        addMessage('system', `Final Score: ${analysis.overall_score || 'N/A'}%`);
+                    }
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('endBtn').disabled = true;
+                    break;
+                    
+                case 'transcription_interim':
+                    addMessage('system', `Processing: ${data.partial_text}`);
+                    break;
+                    
+                case 'error':
+                    addMessage('error', `Error: ${data.message}`);
+                    break;
+                    
+                default:
+                    addMessage('system', `Received: ${JSON.stringify(data)}`);
+            }
+        }
+        
+        function startInterview() {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                addMessage('error', 'WebSocket not connected');
+                return;
+            }
+            
+            const message = {
+                action: 'start_interview',
+                user_id: document.getElementById('userId').value,
+                interview_type: document.getElementById('interviewType').value,
+                topic: document.getElementById('interviewTopic').value,
+                difficulty: document.getElementById('difficulty').value
+            };
+            
+            websocket.send(JSON.stringify(message));
+            addMessage('user', `Starting ${message.interview_type} interview about ${message.topic} (${message.difficulty} level)`);
+        }
+        
+        function endInterview() {
+            if (!websocket || !currentSessionId) {
+                addMessage('error', 'No active interview session');
+                return;
+            }
+            
+            const message = {
+                action: 'end_interview',
+                session_id: currentSessionId
+            };
+            
+            websocket.send(JSON.stringify(message));
+            addMessage('user', 'Ending interview session...');
+        }
+        
+        function getInterviewStatus() {
+            if (!currentSessionId) {
+                addMessage('error', 'No active interview session');
+                return;
+            }
+            
+            // For WebSocket, we'll simulate this with a test message
+            addMessage('system', `Current session: ${currentSessionId}`);
+            addMessage('system', `Questions asked: ${questionCount}, Responses: ${responseCount}`);
+        }
+        
+        async function testAudioPermissions() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                document.getElementById('audioStatus').className = 'status connected';
+                document.getElementById('audioStatus').textContent = 'Microphone access granted';
+                addMessage('system', 'Microphone permissions granted');
+                
+                // Stop the stream
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                document.getElementById('audioStatus').className = 'status disconnected';
+                document.getElementById('audioStatus').textContent = 'Microphone access denied';
+                addMessage('error', `Microphone error: ${error.message}`);
+            }
+        }
+        
+        async function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        }
+        
+        async function startRecording() {
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                mediaRecorder = new MediaRecorder(audioStream);
+                const audioChunks = [];
+                
+                mediaRecorder.ondataavailable = function(event) {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = function() {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    processAudioBlob(audioBlob);
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                document.getElementById('recordBtn').classList.add('recording');
+                document.getElementById('recordBtn').textContent = '⏹️';
+                document.getElementById('audioStatus').className = 'status interviewing';
+                document.getElementById('audioStatus').textContent = 'Recording...';
+                
+                addMessage('system', 'Recording started');
+                
+                // Simulate audio level
+                simulateAudioLevel();
+                
+            } catch (error) {
+                addMessage('error', `Recording error: ${error.message}`);
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                document.getElementById('recordBtn').classList.remove('recording');
+                document.getElementById('recordBtn').textContent = '🎤';
+                document.getElementById('audioStatus').className = 'status connected';
+                document.getElementById('audioStatus').textContent = 'Recording stopped';
+                document.getElementById('audioLevelBar').style.width = '0%';
+                
+                if (audioStream) {
+                    audioStream.getTracks().forEach(track => track.stop());
+                }
+                
+                addMessage('system', 'Recording stopped, processing audio...');
+            }
+        }
+        
+        function processAudioBlob(audioBlob) {
+            if (!currentSessionId) {
+                addMessage('error', 'No active interview session');
+                return;
+            }
+            
+            // Convert blob to base64
+            const reader = new FileReader();
+            reader.onload = function() {
+                const base64Audio = reader.result.split(',')[1];
+                
+                const message = {
+                    action: 'audio_chunk',
+                    session_id: currentSessionId,
+                    audio_data: base64Audio,
+                    is_final: true
+                };
+                
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.send(JSON.stringify(message));
+                    addMessage('user', 'Audio sent for processing...');
+                } else {
+                    addMessage('error', 'WebSocket not connected');
+                }
+            };
+            reader.readAsDataURL(audioBlob);
+        }
+        
+        function simulateAudioChunk() {
+            if (!currentSessionId) {
+                addMessage('error', 'No active interview session');
+                return;
+            }
+            
+            // Simulate audio data
+            const fakeAudioData = btoa('fake_audio_data_for_testing');
+            
+            const message = {
+                action: 'audio_chunk',
+                session_id: currentSessionId,
+                audio_data: fakeAudioData,
+                is_final: true
+            };
+            
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify(message));
+                addMessage('user', 'Simulated audio sent for processing...');
+            } else {
+                addMessage('error', 'WebSocket not connected');
+            }
+        }
+        
+        function simulateAudioLevel() {
+            if (!isRecording) return;
+            
+            const level = Math.random() * 100;
+            document.getElementById('audioLevelBar').style.width = `${level}%`;
+            
+            setTimeout(simulateAudioLevel, 100);
+        }
+        
+        function sendTestMessage() {
+            const message = document.getElementById('testMessage').value;
+            if (!message) {
+                addMessage('error', 'Please enter a test message');
+                return;
+            }
+            
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(message);
+                addMessage('user', `Sent: ${message}`);
+                document.getElementById('testMessage').value = '';
+            } else {
+                addMessage('error', 'WebSocket not connected');
+            }
+        }
+        
+        async function testBedrock() {
+            addMessage('system', 'Testing Bedrock Agent integration...');
+            
+            try {
+                // This would typically be done through your API
+                const testData = {
+                    message: 'Test voice interview capabilities',
+                    timestamp: new Date().toISOString()
+                };
+                
+                addMessage('system', `Bedrock test data: ${JSON.stringify(testData)}`);
+                
+            } catch (error) {
+                addMessage('error', `Bedrock test failed: ${error.message}`);
+            }
+        }
+        
+        function addMessage(type, content) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            messageDiv.innerHTML = `<strong>[${timestamp}]</strong> ${content}`;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+            addMessage('system', 'Messages cleared');
+        }
+        
+        function updateMetrics() {
+            document.getElementById('questionCount').textContent = questionCount;
+            document.getElementById('responseCount').textContent = responseCount;
+            
+            if (interviewStartTime) {
+                const duration = Math.floor((Date.now() - interviewStartTime) / 1000);
+                const minutes = Math.floor(duration / 60);
+                const seconds = duration % 60;
+                document.getElementById('sessionDuration').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            if (responseCount > 0 && lastQuestionTime) {
+                const avgTime = Math.floor((Date.now() - interviewStartTime) / responseCount / 1000);
+                document.getElementById('avgResponseTime').textContent = `${avgTime}s`;
+            }
+        }
+        
+        // Update metrics every second
+        setInterval(updateMetrics, 1000);
+    </script>
+</body>
+</html>

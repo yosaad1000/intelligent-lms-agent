@@ -6,7 +6,7 @@ Description: LMS API Backend - Serverless Lambda Functions
 Globals:
   Function:
     Timeout: 30
-    Runtime: python3.12
+    Runtime: python3.11
     Architectures:
       - x86_64
     Environment:
@@ -143,6 +143,74 @@ Resources:
                 - bedrock:InvokeAgent
               Resource: '*'
 
+  # LangGraph Chat Function
+  LangGraphChatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/chat/
+      Handler: langgraph_chat_handler.lambda_handler
+      Description: LangChain + LangGraph AI Agent Chat
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 1024
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: amazon.nova-micro-v1:0
+          BEDROCK_EMBEDDING_MODEL_ID: amazon.titan-embed-text-v1
+          BEDROCK_MAX_RETRIES: 3
+          BEDROCK_RETRY_DELAY: 1.0
+          BEDROCK_TIMEOUT_SECONDS: 30
+          CHAT_HISTORY_TABLE: !Ref ChatMemoryTable
+          DEBUG: true
+          LOG_LEVEL: INFO
+      Events:
+        LangGraphChatApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/chat/langgraph
+            Method: post
+        LangGraphWorkflowApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/chat/workflow
+            Method: get
+        LangGraphToggleApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/chat/toggle
+            Method: post
+        LangGraphHistoryApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/chat/history
+            Method: get
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChatMemoryTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChatConversationsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChatMessagesTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeAgent
+                - bedrock:Retrieve
+                - comprehend:DetectDominantLanguage
+                - comprehend:DetectKeyPhrases
+                - comprehend:DetectSentiment
+                - comprehend:DetectEntities
+                - translate:TranslateText
+                - textract:StartDocumentTextDetection
+                - textract:GetDocumentTextDetection
+              Resource: '*'
+
   # S3 Bucket for Documents
   DocumentsBucket:
     Type: AWS::S3::Bucket
@@ -243,6 +311,37 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+
+  # LangChain Memory Table
+  ChatMemoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lms-chat-memory
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: user-id-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 
 # Outputs
 Outputs:

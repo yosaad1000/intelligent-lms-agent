@@ -1,12 +1,16 @@
 """
-Text extraction utilities for different file types
-Supports PDF, DOCX, and TXT files for RAG processing
+Advanced text extraction utilities with AWS Textract integration
+Supports PDF, DOCX, TXT files, and images using AWS Textract for enhanced extraction
 """
 
 import io
 import logging
-from typing import Optional, Dict, Any
+import boto3
+import json
+import time
+from typing import Optional, Dict, Any, List
 import mimetypes
+import base64
 
 # Text extraction libraries
 try:
@@ -21,21 +25,41 @@ logger = logging.getLogger(__name__)
 
 
 class TextExtractor:
-    """Utility class for extracting text from various file formats"""
+    """Advanced text extraction utility with AWS Textract integration"""
     
-    SUPPORTED_EXTENSIONS = {'.pdf', '.docx', '.txt'}
+    SUPPORTED_EXTENSIONS = {'.pdf', '.docx', '.txt', '.png', '.jpg', '.jpeg', '.tiff', '.bmp'}
     SUPPORTED_MIME_TYPES = {
         'application/pdf',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'text/plain'
+        'text/plain',
+        'image/png',
+        'image/jpeg',
+        'image/tiff',
+        'image/bmp'
     }
+    
+    # Textract supported formats
+    TEXTRACT_SUPPORTED = {'.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.bmp'}
     
     def __init__(self):
         self.extraction_methods = {
-            '.pdf': self._extract_from_pdf,
+            '.pdf': self._extract_from_pdf_textract,
             '.docx': self._extract_from_docx,
-            '.txt': self._extract_from_txt
+            '.txt': self._extract_from_txt,
+            '.png': self._extract_from_image_textract,
+            '.jpg': self._extract_from_image_textract,
+            '.jpeg': self._extract_from_image_textract,
+            '.tiff': self._extract_from_image_textract,
+            '.bmp': self._extract_from_image_textract
         }
+        
+        # Initialize AWS clients
+        self.textract_client = boto3.client('textract')
+        self.comprehend_client = boto3.client('comprehend')
+        
+        # Textract configuration
+        self.use_textract = True  # Can be disabled for fallback
+        self.textract_timeout = 300  # 5 minutes for async jobs
     
     def is_supported_file(self, filename: str) -> bool:
         """Check if file type is supported for text extraction"""
@@ -136,8 +160,25 @@ class TextExtractor:
                 'text': ''
             }
     
-    def _extract_from_pdf(self, file_content: bytes, filename: str) -> Dict[str, Any]:
-        """Extract text from PDF file"""
+    def _extract_from_pdf_textract(self, file_content: bytes, filename: str) -> Dict[str, Any]:
+        """Extract text from PDF using AWS Textract with fallback to PyPDF2"""
+        
+        if self.use_textract:
+            try:
+                # Try Textract first for better accuracy
+                textract_result = self._extract_with_textract(file_content, filename, 'PDF')
+                if textract_result['success']:
+                    return textract_result
+                else:
+                    logger.warning(f"Textract failed for {filename}, falling back to PyPDF2: {textract_result['error']}")
+            except Exception as e:
+                logger.warning(f"Textract error for {filename}, falling back to PyPDF2: {str(e)}")
+        
+        # Fallback to PyPDF2
+        return self._extract_from_pdf_pypdf2(file_content, filename)
+    
+    def _extract_from_pdf_pypdf2(self, file_content: bytes, filename: str) -> Dict[str, Any]:
+        """Extract text from PDF file using PyPDF2 (fallback method)"""
         
         try:
             pdf_file = io.BytesIO(file_content)
@@ -170,7 +211,8 @@ class TextExtractor:
                 'success': True,
                 'text': full_text,
                 'page_count': page_count,
-                'pages_processed': len(text_content)
+                'pages_processed': len(text_content),
+                'extraction_method': 'PyPDF2'
             }
             
         except Exception as e:
@@ -178,6 +220,268 @@ class TextExtractor:
                 'success': False,
                 'error': f'Failed to extract text from PDF: {str(e)}',
                 'text': ''
+            }
+    
+    def _extract_from_image_textract(self, file_content: bytes, filename: str) -> Dict[str, Any]:
+        """Extract text from image using AWS Textract"""
+        
+        try:
+            return self._extract_with_textract(file_content, filename, 'IMAGE')
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Failed to extract text from image: {str(e)}',
+                'text': ''
+            }
+    
+    def _extract_with_textract(self, file_content: bytes, filename: str, document_type: str) -> Dict[str, Any]:
+        """Extract text using AWS Textract (supports PDF and images)"""
+        
+        try:
+            # Check file size (Textract limits: 10MB for sync, 500MB for async)
+            file_size = len(file_content)
+            max_sync_size = 10 * 1024 * 1024  # 10MB
+            
+            if file_size > max_sync_size:
+                # Use async processing for large files
+                return self._extract_with_textract_async(file_content, filename, document_type)
+            else:
+                # Use synchronous processing for smaller files
+                return self._extract_with_textract_sync(file_content, filename, document_type)
+                
+        except Exception as e:
+            logger.error(f"Textract extraction error for {filename}: {str(e)}")
+            return {
+                'success': False,
+                'error': f'Textract processing failed: {str(e)}',
+                'text': ''
+            }
+    
+    def _extract_with_textract_sync(self, file_content: bytes, filename: str, document_type: str) -> Dict[str, Any]:
+        """Synchronous Textract extraction for smaller files"""
+        
+        try:
+            # Call Textract detect_document_text
+            response = self.textract_client.detect_document_text(
+                Document={'Bytes': file_content}
+            )
+            
+            # Extract text from response
+            text_blocks = []
+            line_blocks = []
+            word_blocks = []
+            
+            for block in response.get('Blocks', []):
+                if block['BlockType'] == 'LINE':
+                    line_blocks.append(block['Text'])
+                elif block['BlockType'] == 'WORD':
+                    word_blocks.append(block['Text'])
+            
+            # Combine lines to form full text
+            full_text = '\n'.join(line_blocks)
+            
+            # Get additional analysis with Comprehend
+            comprehend_analysis = self._analyze_with_comprehend(full_text)
+            
+            return {
+                'success': True,
+                'text': full_text,
+                'extraction_method': 'AWS Textract (sync)',
+                'document_type': document_type,
+                'blocks_detected': len(response.get('Blocks', [])),
+                'lines_detected': len(line_blocks),
+                'words_detected': len(word_blocks),
+                'comprehend_analysis': comprehend_analysis
+            }
+            
+        except Exception as e:
+            logger.error(f"Textract sync extraction failed: {str(e)}")
+            return {
+                'success': False,
+                'error': f'Textract sync processing failed: {str(e)}',
+                'text': ''
+            }
+    
+    def _extract_with_textract_async(self, file_content: bytes, filename: str, document_type: str) -> Dict[str, Any]:
+        """Asynchronous Textract extraction for larger files"""
+        
+        try:
+            # For async processing, we need to upload to S3 first
+            # This is a simplified version - in production, you'd want proper S3 handling
+            
+            # Start async job
+            response = self.textract_client.start_document_text_detection(
+                DocumentLocation={
+                    'S3Object': {
+                        'Bucket': 'temp-textract-bucket',  # Would need to be configured
+                        'Name': f'temp/{filename}'
+                    }
+                }
+            )
+            
+            job_id = response['JobId']
+            
+            # Poll for completion
+            max_wait_time = self.textract_timeout
+            wait_interval = 5
+            elapsed_time = 0
+            
+            while elapsed_time < max_wait_time:
+                result = self.textract_client.get_document_text_detection(JobId=job_id)
+                status = result['JobStatus']
+                
+                if status == 'SUCCEEDED':
+                    # Extract text from results
+                    text_blocks = []
+                    
+                    for block in result.get('Blocks', []):
+                        if block['BlockType'] == 'LINE':
+                            text_blocks.append(block['Text'])
+                    
+                    full_text = '\n'.join(text_blocks)
+                    
+                    # Get Comprehend analysis
+                    comprehend_analysis = self._analyze_with_comprehend(full_text)
+                    
+                    return {
+                        'success': True,
+                        'text': full_text,
+                        'extraction_method': 'AWS Textract (async)',
+                        'document_type': document_type,
+                        'job_id': job_id,
+                        'processing_time': elapsed_time,
+                        'comprehend_analysis': comprehend_analysis
+                    }
+                    
+                elif status == 'FAILED':
+                    return {
+                        'success': False,
+                        'error': f'Textract async job failed: {result.get("StatusMessage", "Unknown error")}',
+                        'text': ''
+                    }
+                
+                # Wait before next poll
+                time.sleep(wait_interval)
+                elapsed_time += wait_interval
+            
+            # Timeout reached
+            return {
+                'success': False,
+                'error': f'Textract async job timed out after {max_wait_time} seconds',
+                'text': ''
+            }
+            
+        except Exception as e:
+            logger.error(f"Textract async extraction failed: {str(e)}")
+            return {
+                'success': False,
+                'error': f'Textract async processing failed: {str(e)}',
+                'text': ''
+            }
+    
+    def _analyze_with_comprehend(self, text: str) -> Dict[str, Any]:
+        """Analyze text with Amazon Comprehend for entities and key phrases"""
+        
+        if not text or len(text.strip()) < 10:
+            return {
+                'entities': [],
+                'key_phrases': [],
+                'sentiment': None,
+                'language': 'en'
+            }
+        
+        try:
+            # Truncate text if too long (Comprehend limits)
+            max_text_length = 5000  # Comprehend limit
+            if len(text) > max_text_length:
+                text = text[:max_text_length]
+                logger.info(f"Text truncated to {max_text_length} characters for Comprehend analysis")
+            
+            analysis_result = {
+                'entities': [],
+                'key_phrases': [],
+                'sentiment': None,
+                'language': 'en'
+            }
+            
+            # Detect language
+            try:
+                language_response = self.comprehend_client.detect_dominant_language(Text=text)
+                languages = language_response.get('Languages', [])
+                if languages:
+                    analysis_result['language'] = languages[0]['LanguageCode']
+            except Exception as e:
+                logger.warning(f"Language detection failed: {str(e)}")
+            
+            # Extract entities
+            try:
+                entities_response = self.comprehend_client.detect_entities(
+                    Text=text,
+                    LanguageCode=analysis_result['language']
+                )
+                
+                entities = []
+                for entity in entities_response.get('Entities', []):
+                    entities.append({
+                        'text': entity['Text'],
+                        'type': entity['Type'],
+                        'score': entity['Score'],
+                        'begin_offset': entity['BeginOffset'],
+                        'end_offset': entity['EndOffset']
+                    })
+                
+                analysis_result['entities'] = entities
+                
+            except Exception as e:
+                logger.warning(f"Entity detection failed: {str(e)}")
+            
+            # Extract key phrases
+            try:
+                phrases_response = self.comprehend_client.detect_key_phrases(
+                    Text=text,
+                    LanguageCode=analysis_result['language']
+                )
+                
+                key_phrases = []
+                for phrase in phrases_response.get('KeyPhrases', []):
+                    key_phrases.append({
+                        'text': phrase['Text'],
+                        'score': phrase['Score'],
+                        'begin_offset': phrase['BeginOffset'],
+                        'end_offset': phrase['EndOffset']
+                    })
+                
+                analysis_result['key_phrases'] = key_phrases
+                
+            except Exception as e:
+                logger.warning(f"Key phrase detection failed: {str(e)}")
+            
+            # Analyze sentiment
+            try:
+                sentiment_response = self.comprehend_client.detect_sentiment(
+                    Text=text,
+                    LanguageCode=analysis_result['language']
+                )
+                
+                analysis_result['sentiment'] = {
+                    'sentiment': sentiment_response['Sentiment'],
+                    'scores': sentiment_response['SentimentScore']
+                }
+                
+            except Exception as e:
+                logger.warning(f"Sentiment analysis failed: {str(e)}")
+            
+            logger.info(f"Comprehend analysis completed: {len(analysis_result['entities'])} entities, {len(analysis_result['key_phrases'])} key phrases")
+            return analysis_result
+            
+        except Exception as e:
+            logger.error(f"Comprehend analysis failed: {str(e)}")
+            return {
+                'entities': [],
+                'key_phrases': [],
+                'sentiment': None,
+                'language': 'en',
+                'error': str(e)
             }
     
     def _extract_from_docx(self, file_content: bytes, filename: str) -> Dict[str, Any]:

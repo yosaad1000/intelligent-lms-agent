@@ -1,0 +1,1 @@
+{"statusCode": 200, "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}, "body": "{\"status\": \"healthy\", \"timestamp\": \"2025-10-19T18:38:50.111253\", \"services\": {\"dynamodb\": \"healthy\", \"s3\": \"healthy\", \"bedrock\": \"healthy\", \"pinecone\": \"configured\"}}"}

@@ -761,8 +761,8 @@ def chat_handler(event, context):
         message = body['message']
         conversation_id = body.get('conversation_id')
         
-        # Process chat with RAG
-        chat_service = RAGChatService()
+        # Process chat with LangGraph
+        chat_service = LangGraphChatService()
         response = await chat_service.process_chat(user_id, message, conversation_id)
         
         return lambda_response(200, response)
@@ -770,48 +770,472 @@ def chat_handler(event, context):
     except Exception as e:
         return lambda_response(500, {'error': str(e)})
 
-class RAGChatService:
-    """Handle RAG-enhanced chat interactions"""
+class LangGraphChatService:
+    """Handle AI Agent interactions using LangChain + LangGraph orchestration"""
     
     def __init__(self):
         self.chat_table = dynamodb.Table('lms-chat-history')
-        self.pinecone_index = pinecone.Index("lms-rag-vectors")
-        self.personalization_index = pinecone.Index("lms-user-intelligence")
+        self.bedrock_kb_retriever = AmazonKnowledgeBasesRetriever(
+            knowledge_base_id=os.getenv('BEDROCK_KB_ID'),
+            retrieval_config={"vectorSearchConfiguration": {"numberOfResults": 10}}
+        )
+        
+        # AWS services
+        self.textract = boto3.client('textract')
+        self.comprehend = boto3.client('comprehend')
+        self.translate = boto3.client('translate')
+        
+        # LangChain LLM
+        self.llm = BedrockLLM(
+            model_id="anthropic.claude-3-sonnet-20240229-v1:0",
+            region_name="us-east-1"
+        )
+        
+        # Initialize LangGraph workflow
+        self.agent_executor = self._create_langgraph_workflow()
+    
+    def _create_langgraph_workflow(self):
+        """Create LangGraph workflow for AI agent orchestration"""
+        
+        from langgraph.graph import StateGraph, END
+        from typing import TypedDict, List
+        from langchain.schema import BaseMessage, HumanMessage, AIMessage
+        
+        # Define agent state
+        class AgentState(TypedDict):
+            messages: List[BaseMessage]
+            user_id: str
+            session_id: str
+            documents: List[dict]
+            intent: str
+            context: List[dict]
+            tools_used: List[str]
+            final_response: str
+            language: str
+        
+        # Create workflow graph
+        workflow = StateGraph(AgentState)
+        
+        # Add processing nodes
+        workflow.add_node("language_detection", self._detect_language_node)
+        workflow.add_node("intent_detection", self._detect_intent_node)
+        workflow.add_node("document_processing", self._process_documents_node)
+        workflow.add_node("rag_retrieval", self._rag_retrieval_node)
+        workflow.add_node("summarization", self._summarization_node)
+        workflow.add_node("quiz_generation", self._quiz_generation_node)
+        workflow.add_node("translation", self._translation_node)
+        workflow.add_node("response_synthesis", self._response_synthesis_node)
+        
+        # Define workflow edges
+        workflow.set_entry_point("language_detection")
+        
+        # Language detection -> Intent detection
+        workflow.add_edge("language_detection", "intent_detection")
+        
+        # Conditional routing based on intent
+        workflow.add_conditional_edges(
+            "intent_detection",
+            self._route_based_on_intent,
+            {
+                "summarize": "document_processing",
+                "question": "rag_retrieval", 
+                "quiz": "quiz_generation",
+                "translate": "translation",
+                "default": "rag_retrieval"
+            }
+        )
+        
+        # All paths lead to response synthesis
+        workflow.add_edge("document_processing", "summarization")
+        workflow.add_edge("summarization", "response_synthesis")
+        workflow.add_edge("rag_retrieval", "response_synthesis")
+        workflow.add_edge("quiz_generation", "response_synthesis")
+        workflow.add_edge("translation", "response_synthesis")
+        
+        # End workflow
+        workflow.add_edge("response_synthesis", END)
+        
+        return workflow.compile()
         
     async def process_chat(self, user_id: str, message: str, conversation_id: str = None) -> dict:
-        """Process chat message with RAG context"""
+        """Process chat message using LangGraph workflow orchestration"""
         
         if not conversation_id:
             conversation_id = str(uuid.uuid4())
         
-        # 1. Retrieve relevant context using RAG
-        rag_context = await self._retrieve_rag_context(user_id, message)
+        # 1. Initialize conversation memory
+        session_id = f"{user_id}_{conversation_id}"
+        memory = DynamoDBChatMessageHistory(
+            table_name="lms-chat-memory",
+            session_id=session_id
+        )
         
-        # 2. Get user personalization
-        user_profile = await self._get_user_personalization(user_id)
+        # 2. Create initial agent state
+        initial_state = {
+            "messages": [HumanMessage(content=message)],
+            "user_id": user_id,
+            "session_id": session_id,
+            "documents": [],
+            "intent": "",
+            "context": [],
+            "tools_used": [],
+            "final_response": "",
+            "language": "en"
+        }
         
-        # 3. Build enhanced prompt
-        enhanced_prompt = self._build_enhanced_prompt(message, rag_context, user_profile)
+        # 3. Execute LangGraph workflow
+        result = await self.agent_executor.ainvoke(initial_state)
         
-        # 4. Call Bedrock Agent
-        agent_response = await self._call_bedrock_agent(enhanced_prompt, user_id)
+        # 4. Extract results
+        ai_response = result["final_response"]
+        tools_used = result["tools_used"]
+        context_used = result.get("context", [])
+        citations = self._extract_citations_from_context(context_used)
         
-        # 5. Extract response and citations
-        ai_response = self._extract_response(agent_response)
-        citations = self._extract_citations(rag_context)
+        # 5. Store conversation in memory and database
+        memory.add_user_message(message)
+        memory.add_ai_message(ai_response)
         
-        # 6. Store conversation
-        await self._store_conversation(user_id, conversation_id, message, ai_response, citations)
+        await self._store_conversation(user_id, conversation_id, message, ai_response, citations, tools_used)
         
-        # 7. Update user intelligence
-        await self._update_user_intelligence(user_id, message, ai_response)
+        # 6. Update user learning analytics
+        await self._update_learning_analytics(user_id, message, result)
         
         return {
             'response': ai_response,
             'citations': citations,
             'conversation_id': conversation_id,
+            'tools_used': tools_used,
+            'intent_detected': result.get("intent", ""),
             'timestamp': datetime.utcnow().isoformat()
         }
+    
+    # LangGraph Workflow Nodes
+    
+    async def _detect_language_node(self, state: dict) -> dict:
+        """Detect language using Amazon Comprehend"""
+        
+        user_message = state["messages"][-1].content
+        
+        try:
+            # Detect dominant language
+            language_detection = self.comprehend.detect_dominant_language(Text=user_message)
+            detected_language = language_detection['Languages'][0]['LanguageCode']
+            
+            state["language"] = detected_language
+            state["tools_used"].append("language_detection")
+            
+        except Exception as e:
+            # Default to English if detection fails
+            state["language"] = "en"
+        
+        return state
+    
+    async def _detect_intent_node(self, state: dict) -> dict:
+        """Detect user intent using Amazon Comprehend"""
+        
+        user_message = state["messages"][-1].content
+        
+        try:
+            # Extract key phrases for intent classification
+            key_phrases_response = self.comprehend.detect_key_phrases(
+                Text=user_message,
+                LanguageCode=state["language"]
+            )
+            
+            key_phrases = [phrase['Text'].lower() for phrase in key_phrases_response['KeyPhrases']]
+            
+            # Intent classification based on key phrases and patterns
+            intent_keywords = {
+                'summarize': ['summary', 'summarize', 'key points', 'overview', 'brief', 'main points'],
+                'question': ['what', 'how', 'why', 'explain', 'tell me', 'describe'],
+                'quiz': ['quiz', 'test', 'questions', 'assessment', 'exam'],
+                'translate': ['translate', 'translation', 'language', 'convert']
+            }
+            
+            detected_intent = "question"  # default
+            for intent, keywords in intent_keywords.items():
+                if any(keyword in user_message.lower() or keyword in key_phrases for keyword in keywords):
+                    detected_intent = intent
+                    break
+            
+            state["intent"] = detected_intent
+            state["tools_used"].append("intent_detection")
+            
+        except Exception as e:
+            state["intent"] = "question"  # fallback
+        
+        return state
+    
+    def _route_based_on_intent(self, state: dict) -> str:
+        """Route to appropriate processing node based on detected intent"""
+        
+        intent = state.get("intent", "question")
+        
+        routing_map = {
+            "summarize": "document_processing",
+            "question": "rag_retrieval",
+            "quiz": "quiz_generation", 
+            "translate": "translation"
+        }
+        
+        return routing_map.get(intent, "rag_retrieval")
+    
+    async def _process_documents_node(self, state: dict) -> dict:
+        """Process documents using AWS Textract and Comprehend"""
+        
+        user_id = state["user_id"]
+        
+        # Get user's recent documents from Knowledge Base
+        try:
+            # Query for user's documents
+            documents = await self.bedrock_kb_retriever.aget_relevant_documents(
+                f"user_id:{user_id}"
+            )
+            
+            processed_docs = []
+            for doc in documents[:5]:  # Limit to recent documents
+                # Extract entities and key phrases using Comprehend
+                entities_response = self.comprehend.detect_entities(
+                    Text=doc.page_content[:5000],  # Limit text size
+                    LanguageCode=state["language"]
+                )
+                
+                key_phrases_response = self.comprehend.detect_key_phrases(
+                    Text=doc.page_content[:5000],
+                    LanguageCode=state["language"]
+                )
+                
+                processed_docs.append({
+                    'content': doc.page_content,
+                    'source': doc.metadata.get('source', 'Unknown'),
+                    'entities': entities_response['Entities'],
+                    'key_phrases': key_phrases_response['KeyPhrases']
+                })
+            
+            state["documents"] = processed_docs
+            state["tools_used"].append("document_processing")
+            
+        except Exception as e:
+            state["documents"] = []
+        
+        return state
+    
+    async def _rag_retrieval_node(self, state: dict) -> dict:
+        """Retrieve relevant context using Bedrock Knowledge Base"""
+        
+        user_message = state["messages"][-1].content
+        user_id = state["user_id"]
+        
+        try:
+            # Retrieve relevant documents
+            relevant_docs = await self.bedrock_kb_retriever.aget_relevant_documents(
+                f"{user_message} user_id:{user_id}"
+            )
+            
+            context = []
+            for doc in relevant_docs:
+                context.append({
+                    'content': doc.page_content,
+                    'source': doc.metadata.get('source', 'Unknown'),
+                    'score': doc.metadata.get('score', 0.0)
+                })
+            
+            state["context"] = context
+            state["tools_used"].append("rag_retrieval")
+            
+        except Exception as e:
+            state["context"] = []
+        
+        return state
+    
+    async def _summarization_node(self, state: dict) -> dict:
+        """Generate document summaries using Bedrock LLM"""
+        
+        documents = state.get("documents", [])
+        
+        if not documents:
+            state["final_response"] = "No documents found to summarize."
+            return state
+        
+        try:
+            # Combine document content
+            combined_content = "\n\n".join([
+                f"Document: {doc['source']}\nContent: {doc['content'][:2000]}"
+                for doc in documents
+            ])
+            
+            # Create summarization prompt
+            summary_prompt = f"""
+            Please provide a comprehensive summary of the following documents:
+            
+            {combined_content}
+            
+            Include:
+            1. Main topics and key concepts
+            2. Important details and findings
+            3. Conclusions or takeaways
+            4. Source references
+            
+            Format the summary with clear headings and bullet points.
+            """
+            
+            # Generate summary using Bedrock LLM
+            summary = await self.llm.ainvoke(summary_prompt)
+            
+            state["final_response"] = summary
+            state["tools_used"].append("summarization")
+            
+        except Exception as e:
+            state["final_response"] = f"Error generating summary: {str(e)}"
+        
+        return state
+    
+    async def _quiz_generation_node(self, state: dict) -> dict:
+        """Generate quiz questions using Bedrock LLM"""
+        
+        user_message = state["messages"][-1].content
+        
+        # First get relevant context
+        state = await self._rag_retrieval_node(state)
+        context = state.get("context", [])
+        
+        if not context:
+            state["final_response"] = "No content available for quiz generation."
+            return state
+        
+        try:
+            # Combine context for quiz generation
+            content_for_quiz = "\n\n".join([
+                f"Source: {ctx['source']}\nContent: {ctx['content']}"
+                for ctx in context[:3]  # Limit to top 3 most relevant
+            ])
+            
+            quiz_prompt = f"""
+            Based on the following content, generate 5 multiple-choice questions:
+            
+            {content_for_quiz}
+            
+            Format each question as:
+            Q1: [Question text]
+            A) [Option A]
+            B) [Option B] 
+            C) [Option C]
+            D) [Option D]
+            Correct Answer: [Letter]
+            Explanation: [Brief explanation]
+            
+            Make questions that test understanding of key concepts.
+            """
+            
+            quiz_response = await self.llm.ainvoke(quiz_prompt)
+            
+            state["final_response"] = quiz_response
+            state["tools_used"].append("quiz_generation")
+            
+        except Exception as e:
+            state["final_response"] = f"Error generating quiz: {str(e)}"
+        
+        return state
+    
+    async def _translation_node(self, state: dict) -> dict:
+        """Handle translation using Amazon Translate"""
+        
+        user_message = state["messages"][-1].content
+        source_language = state["language"]
+        
+        try:
+            if source_language != 'en':
+                # Translate to English for processing
+                translation_response = self.translate.translate_text(
+                    Text=user_message,
+                    SourceLanguageCode=source_language,
+                    TargetLanguageCode='en'
+                )
+                
+                translated_text = translation_response['TranslatedText']
+                
+                # Update message for further processing
+                state["messages"].append(AIMessage(content=f"Translated: {translated_text}"))
+                
+                # Continue with RAG retrieval using translated text
+                temp_state = state.copy()
+                temp_state["messages"][-1] = HumanMessage(content=translated_text)
+                temp_state = await self._rag_retrieval_node(temp_state)
+                
+                # Translate response back to original language
+                if temp_state.get("context"):
+                    english_response = f"Based on your documents: {temp_state['context'][0]['content'][:500]}"
+                    
+                    final_translation = self.translate.translate_text(
+                        Text=english_response,
+                        SourceLanguageCode='en',
+                        TargetLanguageCode=source_language
+                    )
+                    
+                    state["final_response"] = final_translation['TranslatedText']
+                else:
+                    state["final_response"] = "No relevant content found in your documents."
+                
+                state["tools_used"].append("translation")
+            else:
+                # No translation needed, proceed with RAG
+                state = await self._rag_retrieval_node(state)
+                
+        except Exception as e:
+            state["final_response"] = f"Translation error: {str(e)}"
+        
+        return state
+    
+    async def _response_synthesis_node(self, state: dict) -> dict:
+        """Synthesize final response using Bedrock LLM"""
+        
+        # If final_response is already set (from summarization, quiz, etc.), return as is
+        if state.get("final_response"):
+            return state
+        
+        user_message = state["messages"][-1].content
+        context = state.get("context", [])
+        
+        try:
+            if context:
+                # Create context-aware response
+                context_text = "\n\n".join([
+                    f"From {ctx['source']}: {ctx['content']}"
+                    for ctx in context[:3]
+                ])
+                
+                synthesis_prompt = f"""
+                User Question: {user_message}
+                
+                Relevant Context from User's Documents:
+                {context_text}
+                
+                Please provide a helpful, accurate response based on the user's uploaded materials.
+                Include specific references to the source documents when relevant.
+                If the context doesn't fully answer the question, acknowledge this and provide what information is available.
+                """
+                
+                response = await self.llm.ainvoke(synthesis_prompt)
+                state["final_response"] = response
+            else:
+                # No context available
+                fallback_prompt = f"""
+                User Question: {user_message}
+                
+                I don't have access to relevant documents in your knowledge base for this question.
+                Please provide a helpful general response or suggest that the user upload relevant documents.
+                """
+                
+                response = await self.llm.ainvoke(fallback_prompt)
+                state["final_response"] = response
+            
+            state["tools_used"].append("response_synthesis")
+            
+        except Exception as e:
+            state["final_response"] = f"I apologize, but I encountered an error processing your request: {str(e)}"
+        
+        return state
     
     async def _retrieve_rag_context(self, user_id: str, query: str, top_k: int = 5) -> List[dict]:
         """Retrieve relevant context using Pinecone RAG"""
@@ -859,8 +1283,320 @@ class RAGChatService:
         """
         
         return prompt
+    
+    async def _detect_user_intent(self, message: str) -> dict:
+        """Detect user intent from natural language message"""
+        
+        # Keywords and patterns for summarization intent
+        summarization_keywords = [
+            'summarize', 'summary', 'key points', 'main points', 'overview',
+            'brief', 'outline', 'highlights', 'recap', 'gist', 'essence'
+        ]
+        
+        message_lower = message.lower()
+        
+        # Check for summarization intent
+        if any(keyword in message_lower for keyword in summarization_keywords):
+            # Try to extract target document from message
+            target_document = self._extract_document_reference(message)
+            
+            return {
+                'type': 'summarization',
+                'target_document': target_document,
+                'summary_type': self._determine_summary_type(message)
+            }
+        
+        # Default to Q&A intent
+        return {
+            'type': 'question_answer',
+            'target_document': None,
+            'summary_type': None
+        }
+    
+    def _extract_document_reference(self, message: str) -> str:
+        """Extract document reference from user message"""
+        
+        # Look for patterns like "my physics notes", "the uploaded document", etc.
+        import re
+        
+        # Pattern for "my [subject] [document_type]"
+        pattern1 = r'my\s+(\w+)\s+(notes|document|file|paper|textbook)'
+        match1 = re.search(pattern1, message.lower())
+        if match1:
+            return f"{match1.group(1)}_{match1.group(2)}"
+        
+        # Pattern for "the [document_name]"
+        pattern2 = r'the\s+(\w+(?:\s+\w+)*)\s+(?:document|file|notes)'
+        match2 = re.search(pattern2, message.lower())
+        if match2:
+            return match2.group(1).replace(' ', '_')
+        
+        # Pattern for specific file names
+        pattern3 = r'(\w+\.(?:pdf|docx|txt))'
+        match3 = re.search(pattern3, message.lower())
+        if match3:
+            return match3.group(1)
+        
+        return None  # No specific document mentioned
+    
+    def _determine_summary_type(self, message: str) -> str:
+        """Determine the type of summary requested"""
+        
+        message_lower = message.lower()
+        
+        if any(word in message_lower for word in ['brief', 'short', 'quick']):
+            return 'brief'
+        elif any(word in message_lower for word in ['detailed', 'comprehensive', 'thorough']):
+            return 'detailed'
+        else:
+            return 'standard'
+    
+    async def _retrieve_full_document_context(self, user_id: str, target_document: str = None) -> List[dict]:
+        """Retrieve full document content for summarization"""
+        
+        # Build filter for Pinecone query
+        filter_dict = {'user_id': user_id}
+        
+        if target_document:
+            # Try to match document by filename or content
+            filter_dict['source_file'] = {'$regex': f'.*{target_document}.*'}
+        
+        # Retrieve more chunks for comprehensive summarization
+        search_results = self.pinecone_index.query(
+            vector=[0] * 1536,  # Dummy vector for metadata-only search
+            filter=filter_dict,
+            top_k=50,  # Get more chunks for full document context
+            include_metadata=True
+        )
+        
+        # If no specific document found, get most recent document
+        if not search_results['matches'] and target_document:
+            search_results = self.pinecone_index.query(
+                vector=[0] * 1536,
+                filter={'user_id': user_id},
+                top_k=20,
+                include_metadata=True
+            )
+        
+        # Group chunks by document and return full content
+        document_chunks = {}
+        for match in search_results['matches']:
+            metadata = match['metadata']
+            file_id = metadata['file_id']
+            
+            if file_id not in document_chunks:
+                document_chunks[file_id] = {
+                    'source': metadata['source_file'],
+                    'chunks': []
+                }
+            
+            document_chunks[file_id]['chunks'].append({
+                'text': metadata['text'],
+                'chunk_index': metadata['chunk_index']
+            })
+        
+        # Sort chunks by index and combine
+        context_chunks = []
+        for file_id, doc_data in document_chunks.items():
+            # Sort chunks by index
+            sorted_chunks = sorted(doc_data['chunks'], key=lambda x: x['chunk_index'])
+            
+            # Combine all chunks for this document
+            full_text = ' '.join([chunk['text'] for chunk in sorted_chunks])
+            
+            context_chunks.append({
+                'text': full_text,
+                'source': doc_data['source'],
+                'file_id': file_id,
+                'chunk_count': len(sorted_chunks)
+            })
+        
+        return context_chunks
+    
+    def _build_intent_aware_prompt(self, message: str, rag_context: List[dict], user_profile: dict, intent: dict) -> str:
+        """Build prompt based on detected user intent"""
+        
+        if intent['type'] == 'summarization':
+            return self._build_summarization_prompt(message, rag_context, user_profile, intent)
+        else:
+            return self._build_enhanced_prompt(message, rag_context, user_profile)
+    
+    def _build_summarization_prompt(self, message: str, rag_context: List[dict], user_profile: dict, intent: dict) -> str:
+        """Build specialized prompt for document summarization"""
+        
+        # Combine all document content
+        document_content = "\n\n".join([
+            f"Document: {ctx['source']}\nContent: {ctx['text']}" 
+            for ctx in rag_context
+        ])
+        
+        summary_instructions = {
+            'brief': "Provide a concise summary in 3-5 key points.",
+            'detailed': "Provide a comprehensive summary with main topics, key concepts, important details, and conclusions.",
+            'standard': "Provide a well-structured summary with key points, main concepts, and important takeaways."
+        }
+        
+        instruction = summary_instructions.get(intent['summary_type'], summary_instructions['standard'])
+        
+        prompt = f"""
+        User Profile:
+        - Learning Level: {user_profile.get('difficulty_preference', 'intermediate')}
+        - Mastery Areas: {', '.join(user_profile.get('mastery_levels', {}).keys())}
+        
+        Document Content to Summarize:
+        {document_content}
+        
+        User Request: {message}
+        
+        Task: {instruction}
+        
+        Please provide a summary that:
+        1. Captures the main themes and key concepts
+        2. Highlights important details and conclusions
+        3. Is appropriate for the user's learning level
+        4. Includes specific references to source documents
+        5. Organizes information in a clear, logical structure
+        
+        Format the summary with clear headings and bullet points where appropriate.
+        """
+        
+        return prompt
+    
+    async def _call_bedrock_agent_with_tools(self, message: str, user_id: str, rag_context: List[dict]) -> dict:
+        """Call Bedrock Agent with document summarization tools"""
+        
+        # Initialize Bedrock Agent Runtime client
+        bedrock_agent_runtime = boto3.client('bedrock-agent-runtime')
+        
+        # Prepare session attributes with user context
+        session_attributes = {
+            'user_id': user_id,
+            'available_documents': json.dumps([ctx['source'] for ctx in rag_context]),
+            'user_profile': json.dumps(await self._get_user_personalization(user_id))
+        }
+        
+        # Call Bedrock Agent with tools enabled
+        response = bedrock_agent_runtime.invoke_agent(
+            agentId=os.getenv('BEDROCK_CHAT_AGENT_ID'),
+            agentAliasId=os.getenv('BEDROCK_CHAT_AGENT_ALIAS_ID'),
+            sessionId=f"user_{user_id}_{int(time.time())}",
+            inputText=message,
+            sessionAttributes=session_attributes
+        )
+        
+        return response
+    
+    async def _setup_bedrock_agent_tools(self):
+        """Setup Bedrock Agent with document summarization tools"""
+        
+        # This would be called during agent setup/deployment
+        bedrock_agent = boto3.client('bedrock-agent')
+        
+        # Define document summarization tool
+        summarization_tool = {
+            'toolSpec': {
+                'name': 'document_summarizer',
+                'description': 'Summarizes uploaded documents based on user requests. Use this when users ask for summaries, key points, or overviews of their documents.',
+                'inputSchema': {
+                    'json': {
+                        'type': 'object',
+                        'properties': {
+                            'document_reference': {
+                                'type': 'string',
+                                'description': 'The specific document to summarize (filename or description)'
+                            },
+                            'summary_type': {
+                                'type': 'string',
+                                'enum': ['brief', 'detailed', 'standard'],
+                                'description': 'Type of summary requested'
+                            },
+                            'focus_areas': {
+                                'type': 'array',
+                                'items': {'type': 'string'},
+                                'description': 'Specific topics or areas to focus on in the summary'
+                            }
+                        },
+                        'required': ['summary_type']
+                    }
+                }
+            }
+        }
+        
+        # Define RAG search tool
+        rag_search_tool = {
+            'toolSpec': {
+                'name': 'document_search',
+                'description': 'Searches through user documents to find relevant information for answering questions.',
+                'inputSchema': {
+                    'json': {
+                        'type': 'object',
+                        'properties': {
+                            'query': {
+                                'type': 'string',
+                                'description': 'The search query to find relevant document content'
+                            },
+                            'document_filter': {
+                                'type': 'string',
+                                'description': 'Optional filter to search within specific documents'
+                            }
+                        },
+                        'required': ['query']
+                    }
+                }
+            }
+        }
+        
+        return [summarization_tool, rag_search_tool]
 
-### Voice Interview Lambda Functions
+# Bedrock Agent Tool Lambda Functions
+def document_summarizer_tool(event, context):
+    """Lambda function that implements document summarization tool for Bedrock Agent"""
+    
+    try:
+        # Parse tool input from Bedrock Agent
+        tool_input = json.loads(event['body'])
+        user_id = event['requestContext']['authorizer']['user_id']
+        
+        document_reference = tool_input.get('document_reference')
+        summary_type = tool_input.get('summary_type', 'standard')
+        focus_areas = tool_input.get('focus_areas', [])
+        
+        # Initialize summarization service
+        summarizer = DocumentSummarizationService()
+        
+        # Generate summary
+        summary_result = await summarizer.generate_summary(
+            user_id=user_id,
+            document_reference=document_reference,
+            summary_type=summary_type,
+            focus_areas=focus_areas
+        )
+        
+        return lambda_response(200, {
+            'summary': summary_result['summary'],
+            'source_documents': summary_result['sources'],
+            'summary_type': summary_type
+        })
+        
+    except Exception as e:
+        return lambda_response(500, {'error': str(e)})
+
+def document_search_tool(event, context):
+    """Lambda function that implements document search tool for Bedrock Agent"""
+    
+    try:
+        # Parse tool input from Bedrock Agent
+        tool_input = json.loads(event['body'])
+        user_id = event['requestContext']['authorizer']['user_id']
+        
+        query = tool_input['query']
+        document_filter = tool_input.get('document_filter')
+        
+        # Initialize RAG service
+        rag_service = RAGSearchService()
+        
+        # Perform search
+        search_results = await rag_service.search_do
 ```python
 def websocket_connect_handler(event, context):
     """Handle WebSocket connection for voice interviews"""
@@ -2044,6 +2780,169 @@ class TestIntegration:
         # Test chat with uploaded content
         chat_response = await self._test_chat_with_content()
         assert len(chat_response["citations"]) > 0
+```
+
+## Bedrock Agent Tools
+
+### Document Summarizer Tool
+```python
+class DocumentSummarizerTool:
+    """Bedrock Agent tool for document summarization"""
+    
+    def __init__(self):
+        self.pinecone_index = pinecone.Index("lms-rag-vectors")
+        self.files_table = dynamodb.Table('lms-user-files')
+    
+    async def execute(self, parameters: dict) -> dict:
+        """Execute document summarization tool"""
+        
+        user_id = parameters.get('user_id')
+        document_reference = parameters.get('document_reference')
+        summary_type = parameters.get('summary_type', 'standard')
+        
+        # Retrieve full document content
+        document_content = await self._get_full_document_content(user_id, document_reference)
+        
+        if not document_content:
+            return {
+                'success': False,
+                'message': 'No document found matching the reference',
+                'available_documents': await self._list_user_documents(user_id)
+            }
+        
+        # Generate summary using Bedrock LLM
+        summary = await self._generate_summary(document_content, summary_type)
+        
+        return {
+            'success': True,
+            'summary': summary,
+            'document_info': {
+                'title': document_content['title'],
+                'source': document_content['source'],
+                'total_chunks': document_content['chunk_count']
+            },
+            'summary_type': summary_type
+        }
+
+### RAG Search Tool
+```python
+class RAGSearchTool:
+    """Bedrock Agent tool for RAG-based document search"""
+    
+    def __init__(self):
+        self.pinecone_index = pinecone.Index("lms-rag-vectors")
+        self.bedrock_runtime = boto3.client('bedrock-runtime')
+    
+    async def execute(self, parameters: dict) -> dict:
+        """Execute RAG search tool"""
+        
+        user_id = parameters.get('user_id')
+        query = parameters.get('query')
+        top_k = parameters.get('top_k', 5)
+        
+        # Generate query embedding
+        query_embedding = await self._generate_embedding(query)
+        
+        # Search Pinecone
+        search_results = self.pinecone_index.query(
+            vector=query_embedding,
+            filter={'user_id': user_id},
+            top_k=top_k,
+            include_metadata=True
+        )
+        
+        # Format results
+        context_chunks = []
+        for match in search_results['matches']:
+            metadata = match['metadata']
+            context_chunks.append({
+                'text': metadata['text'],
+                'source': metadata['source_file'],
+                'relevance_score': match['score'],
+                'file_id': metadata['file_id']
+            })
+        
+        return {
+            'success': True,
+            'query': query,
+            'results': context_chunks,
+            'total_results': len(context_chunks)
+        }
+
+### Quiz Generator Tool
+```python
+class QuizGeneratorTool:
+    """Bedrock Agent tool for generating quizzes from documents"""
+    
+    def __init__(self):
+        self.pinecone_index = pinecone.Index("lms-rag-vectors")
+        self.bedrock_runtime = boto3.client('bedrock-runtime')
+    
+    async def execute(self, parameters: dict) -> dict:
+        """Execute quiz generation tool"""
+        
+        user_id = parameters.get('user_id')
+        document_reference = parameters.get('document_reference')
+        question_count = parameters.get('question_count', 5)
+        difficulty = parameters.get('difficulty', 'intermediate')
+        
+        # Get document content for quiz generation
+        rag_tool = RAGSearchTool()
+        document_content = await rag_tool.execute({
+            'user_id': user_id,
+            'query': document_reference or 'all content',
+            'top_k': 20
+        })
+        
+        if not document_content['results']:
+            return {
+                'success': False,
+                'message': 'No content found for quiz generation'
+            }
+        
+        # Generate quiz using Bedrock LLM
+        quiz_data = await self._generate_quiz_questions(
+            document_content['results'], 
+            question_count, 
+            difficulty
+        )
+        
+        return {
+            'success': True,
+            'quiz': quiz_data,
+            'metadata': {
+                'question_count': len(quiz_data['questions']),
+                'difficulty': difficulty,
+                'source_documents': list(set([r['source'] for r in document_content['results']]))
+            }
+        }
+
+### Learning Analytics Tool
+```python
+class LearningAnalyticsTool:
+    """Bedrock Agent tool for learning analytics and progress tracking"""
+    
+    def __init__(self):
+        self.personalization_index = pinecone.Index("lms-user-intelligence")
+        self.analytics_table = dynamodb.Table('lms-learning-analytics')
+    
+    async def execute(self, parameters: dict) -> dict:
+        """Execute learning analytics tool"""
+        
+        user_id = parameters.get('user_id')
+        action_type = parameters.get('action_type')  # 'get_progress', 'update_mastery', 'get_recommendations'
+        
+        if action_type == 'get_progress':
+            return await self._get_learning_progress(user_id)
+        elif action_type == 'update_mastery':
+            return await self._update_mastery_level(user_id, parameters)
+        elif action_type == 'get_recommendations':
+            return await self._get_learning_recommendations(user_id)
+        else:
+            return {
+                'success': False,
+                'message': 'Invalid action type for learning analytics'
+            }
 ```
 
 ## Integration with Existing System

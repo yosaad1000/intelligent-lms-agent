@@ -391,7 +391,7 @@ def get_cors_headers() -> Dict[str, str]:
 # RAG Processing Functions
 
 def process_file_for_rag(file_metadata: Dict[str, Any]) -> Dict[str, Any]:
-    """Process file for RAG: extract text, chunk, generate embeddings, store vectors"""
+    """Process file for RAG with enhanced Textract, Comprehend, and Bedrock KB integration"""
     
     try:
         file_id = file_metadata['file_id']
@@ -399,10 +399,10 @@ def process_file_for_rag(file_metadata: Dict[str, Any]) -> Dict[str, Any]:
         filename = file_metadata['filename']
         s3_key = file_metadata['s3_key']
         
-        logger.info(f"Starting RAG processing for file {file_id}: {filename}")
+        logger.info(f"Starting enhanced RAG processing for file {file_id}: {filename}")
         
-        # Step 1: Download and extract text from S3
-        text_content = extract_text_from_s3_file(s3_key, filename)
+        # Step 1: Download and extract text from S3 with Textract and Comprehend
+        text_content, extraction_metadata = extract_text_from_s3_file(s3_key, filename)
         if not text_content:
             return {
                 'success': False,
@@ -419,31 +419,59 @@ def process_file_for_rag(file_metadata: Dict[str, Any]) -> Dict[str, Any]:
         
         # Step 3: Store processed chunks in S3
         chunks_s3_key = f"processed-chunks/user_{user_id}/{file_id}_chunks.json"
-        store_chunks_in_s3(chunks_s3_key, chunks, file_metadata)
+        store_chunks_in_s3(chunks_s3_key, chunks, file_metadata, extraction_metadata)
         
         # Step 4: Generate embeddings and store in Pinecone
         vectors_stored = store_vectors_in_pinecone(file_id, user_id, filename, chunks)
         
-        logger.info(f"RAG processing completed for file {file_id}: {len(chunks)} chunks, {vectors_stored} vectors")
+        # Step 5: Store in Bedrock Knowledge Base with user-specific namespace
+        kb_result = store_in_bedrock_knowledge_base(
+            file_id, user_id, filename, text_content, chunks, 
+            extraction_metadata.get('comprehend_analysis', {}) if extraction_metadata else {}
+        )
         
-        return {
+        logger.info(f"Enhanced RAG processing completed for file {file_id}: {len(chunks)} chunks, {vectors_stored} vectors, KB stored: {kb_result['success']}")
+        
+        processing_result = {
             'success': True,
             'chunks_created': len(chunks),
             'vectors_stored': vectors_stored,
             'content_preview': text_content[:500],
-            'processed_s3_key': chunks_s3_key
+            'processed_s3_key': chunks_s3_key,
+            'extraction_method': extraction_metadata.get('extraction_method', 'unknown') if extraction_metadata else 'unknown',
+            'bedrock_kb_stored': kb_result['success'],
+            'kb_document_id': kb_result.get('kb_document_id')
         }
         
+        # Add Textract and Comprehend insights
+        if extraction_metadata:
+            comprehend_analysis = extraction_metadata.get('comprehend_analysis', {})
+            processing_result.update({
+                'textract_blocks_detected': extraction_metadata.get('blocks_detected', 0),
+                'textract_lines_detected': extraction_metadata.get('lines_detected', 0),
+                'textract_words_detected': extraction_metadata.get('words_detected', 0),
+                'comprehend_entities_count': len(comprehend_analysis.get('entities', [])),
+                'comprehend_key_phrases_count': len(comprehend_analysis.get('key_phrases', [])),
+                'comprehend_language': comprehend_analysis.get('language', 'en'),
+                'comprehend_sentiment': comprehend_analysis.get('sentiment', {}).get('sentiment') if comprehend_analysis.get('sentiment') else None
+            })
+        
+        # Add KB ingestion job ID if available
+        if kb_result.get('ingestion_job_id'):
+            processing_result['kb_ingestion_job_id'] = kb_result['ingestion_job_id']
+        
+        return processing_result
+        
     except Exception as e:
-        logger.error(f"Error in RAG processing: {str(e)}")
+        logger.error(f"Error in enhanced RAG processing: {str(e)}")
         return {
             'success': False,
             'error': str(e)
         }
 
 
-def extract_text_from_s3_file(s3_key: str, filename: str) -> Optional[str]:
-    """Extract text content from file in S3"""
+def extract_text_from_s3_file(s3_key: str, filename: str) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+    """Extract text content from file in S3 with enhanced Textract and Comprehend analysis"""
     
     try:
         from .text_extractor import text_extractor
@@ -455,7 +483,7 @@ def extract_text_from_s3_file(s3_key: str, filename: str) -> Optional[str]:
         response = s3_client.get_object(Bucket=bucket_name, Key=s3_key)
         file_content = response['Body'].read()
         
-        # Extract text using text extractor
+        # Extract text using enhanced text extractor (with Textract and Comprehend)
         extraction_result = text_extractor.extract_text(file_content, filename)
         
         if extraction_result['success']:
@@ -465,19 +493,34 @@ def extract_text_from_s3_file(s3_key: str, filename: str) -> Optional[str]:
             # Validate text quality
             validation = text_extractor.validate_extracted_text(cleaned_text)
             
+            # Get Comprehend analysis from extraction result
+            comprehend_analysis = extraction_result.get('comprehend_analysis', {})
+            
+            # Add extraction metadata
+            extraction_metadata = {
+                'extraction_method': extraction_result.get('extraction_method', 'unknown'),
+                'document_type': extraction_result.get('document_type', 'unknown'),
+                'blocks_detected': extraction_result.get('blocks_detected', 0),
+                'lines_detected': extraction_result.get('lines_detected', 0),
+                'words_detected': extraction_result.get('words_detected', 0),
+                'comprehend_analysis': comprehend_analysis,
+                'validation': validation
+            }
+            
             if validation['is_valid']:
-                logger.info(f"Successfully extracted text from {filename}: {validation['statistics']}")
-                return cleaned_text
+                logger.info(f"Successfully extracted text from {filename} using {extraction_result.get('extraction_method', 'unknown')}: {validation['statistics']}")
+                logger.info(f"Comprehend analysis: {len(comprehend_analysis.get('entities', []))} entities, {len(comprehend_analysis.get('key_phrases', []))} key phrases")
+                return cleaned_text, extraction_metadata
             else:
                 logger.warning(f"Text extraction quality issues for {filename}: {validation['warnings']}")
-                return cleaned_text  # Return anyway, but log warnings
+                return cleaned_text, extraction_metadata  # Return anyway, but log warnings
         else:
             logger.error(f"Text extraction failed for {filename}: {extraction_result['error']}")
-            return None
+            return None, None
             
     except Exception as e:
         logger.error(f"Error extracting text from S3 file {s3_key}: {str(e)}")
-        return None
+        return None, None
 
 
 def create_text_chunks(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[Dict[str, Any]]:
@@ -527,8 +570,9 @@ def create_text_chunks(text: str, chunk_size: int = 1000, overlap: int = 200) ->
     return chunks
 
 
-def store_chunks_in_s3(s3_key: str, chunks: List[Dict[str, Any]], file_metadata: Dict[str, Any]) -> bool:
-    """Store processed chunks in S3"""
+def store_chunks_in_s3(s3_key: str, chunks: List[Dict[str, Any]], file_metadata: Dict[str, Any], 
+                      extraction_metadata: Dict[str, Any] = None) -> bool:
+    """Store processed chunks in S3 with enhanced metadata"""
     
     try:
         s3_client = boto3.client('s3')
@@ -543,11 +587,21 @@ def store_chunks_in_s3(s3_key: str, chunks: List[Dict[str, Any]], file_metadata:
             'chunks': chunks
         }
         
+        # Add extraction metadata if available
+        if extraction_metadata:
+            chunks_data['extraction_metadata'] = extraction_metadata
+        
         s3_client.put_object(
             Bucket=bucket_name,
             Key=s3_key,
-            Body=json.dumps(chunks_data),
-            ContentType='application/json'
+            Body=json.dumps(chunks_data, indent=2),
+            ContentType='application/json',
+            Metadata={
+                'user_id': file_metadata['user_id'],
+                'file_id': file_metadata['file_id'],
+                'total_chunks': str(len(chunks)),
+                'extraction_method': extraction_metadata.get('extraction_method', 'unknown') if extraction_metadata else 'unknown'
+            }
         )
         
         logger.info(f"Stored {len(chunks)} chunks in S3: {s3_key}")
@@ -556,6 +610,40 @@ def store_chunks_in_s3(s3_key: str, chunks: List[Dict[str, Any]], file_metadata:
     except Exception as e:
         logger.error(f"Error storing chunks in S3: {str(e)}")
         return False
+
+
+def store_in_bedrock_knowledge_base(file_id: str, user_id: str, filename: str, 
+                                  text_content: str, chunks: List[Dict[str, Any]],
+                                  comprehend_analysis: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Store document in Bedrock Knowledge Base with user-specific namespace"""
+    
+    try:
+        from .bedrock_kb_manager import bedrock_kb_manager
+        
+        # Store document in Bedrock Knowledge Base
+        kb_result = bedrock_kb_manager.store_document_in_kb(
+            file_id=file_id,
+            user_id=user_id,
+            filename=filename,
+            text_content=text_content,
+            chunks=chunks,
+            comprehend_analysis=comprehend_analysis
+        )
+        
+        if kb_result['success']:
+            logger.info(f"Successfully stored document in Bedrock KB: {kb_result['kb_document_id']}")
+        else:
+            logger.warning(f"Failed to store document in Bedrock KB: {kb_result['error']}")
+        
+        return kb_result
+        
+    except Exception as e:
+        logger.error(f"Error storing document in Bedrock KB: {str(e)}")
+        return {
+            'success': False,
+            'error': str(e),
+            'kb_document_id': None
+        }
 
 
 def store_vectors_in_pinecone(file_id: str, user_id: str, filename: str, chunks: List[Dict[str, Any]]) -> int:

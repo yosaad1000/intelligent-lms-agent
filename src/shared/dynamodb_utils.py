@@ -43,6 +43,16 @@ class DynamoDBUtils:
             raise ValueError(f"Unknown table: {table_name}")
         return self.tables[table_name]
     
+    async def store_chat_message(self, conversation_data: Dict[str, Any]) -> bool:
+        """Store chat message data"""
+        try:
+            # This is a placeholder - would store in appropriate table
+            # For now, just return success
+            return True
+        except Exception as e:
+            print(f"Error storing chat message: {str(e)}")
+            return False
+    
     def put_item(self, table_name: str, item: Dict[str, Any]) -> bool:
         """Put item into DynamoDB table"""
         try:

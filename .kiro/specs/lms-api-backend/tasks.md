@@ -14,71 +14,142 @@ Convert the LMS API backend design into a series of implementation tasks that bu
   - Write unit tests for Lambda functions and basic functionality
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [x] 2. DynamoDB and Pinecone Setup
+- [x] 2. DynamoDB, S3, and Pinecone Setup
   - Create DynamoDB tables for LMS data (files, chat, quizzes, interviews)
-  - Set up Pinecone vector database for RAG and user intelligence
   - Configure S3 buckets for file storage with proper folder structure
-  - Create Lambda utilities for DynamoDB and Pinecone operations
+  - Set up Pinecone vector database for Bedrock Knowledge Base (cost-effective)
+  - Configure Bedrock Knowledge Base to use Pinecone as vector store
+  - Create Lambda utilities for DynamoDB, S3, and Pinecone operations
   - Write integration tests for data storage operations
   - _Requirements: 4.3, 6.1, 6.2_
 
 ### Phase 2: AI Core Functionality
-- [ ] 3. AWS Bedrock Agent SDK Integration
-  - Configure multiple specialized Bedrock Agents (chat, quiz, interview, analysis)
-  - Implement Bedrock Agent SDK integration in Lambda functions
-  - Create AWS service wrappers with retry logic and error handling
-  - Set up agent invocation utilities with proper context management
-  - Write tests for Bedrock Agent SDK integration and responses
-  - _Requirements: 2.1, 2.2, 3.1, 5.1, 7.1_
+- [x] 3. LangChain + LangGraph Agent Setup
 
-- [ ] 4. RAG File Processing Lambda Function
+
+
+
+
+  - Install and configure LangChain and LangGraph in Lambda environment
+  - Set up AWS services integration (Bedrock, Comprehend, Textract, Translate)
+  - Create basic LangGraph workflow with state management
+  - Implement Bedrock LLM integration with Claude/Nova models
+  - Configure DynamoDB conversation memory for LangChain
+  - **Deploy to Lambda and create manual testing interface**
+  - **Test basic LangGraph workflow execution via API calls**
+  - Write tests for LangGraph workflow execution and AWS service integration
+  - _Requirements: 2.1, 2.2, 2.1.1, 2.1.2, 2.1.3_
+
+- [x] 4. Advanced Document Processing with AWS Textract
+
+
+
+
+
+
+
+
   - Implement Lambda function for file upload with S3 presigned URLs
-  - Create text extraction utilities for PDF, DOCX, TXT in Lambda
-  - Build text chunking and embedding generation for RAG
-  - Integrate with Pinecone for vector storage and retrieval
-  - Add file metadata storage in DynamoDB with processing status
-  - Write comprehensive tests for RAG processing pipeline
+  - Integrate AWS Textract for advanced text extraction (PDFs, images, forms)
+  - Add Amazon Comprehend for entity extraction and key phrase detection
+  - Build text chunking and embedding generation for Bedrock Knowledge Base
+  - Store processed documents in Bedrock KB with user-specific namespaces
+  - **Deploy document processing Lambda to AWS**
+  - **Test file upload and processing via web interface**
+  - **Verify Textract extraction and Comprehend analysis results**
+  - Write comprehensive tests for Textract and Comprehend integration
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 5. RAG-Enhanced AI Chat Lambda Function
-  - Create Lambda function for chat with RAG context retrieval
-  - Implement Pinecone vector search for relevant document chunks
-  - Add Bedrock Agent integration with enhanced prompts and context
-  - Build conversation management with DynamoDB storage
-  - Integrate citation extraction from RAG context
-  - Write tests for RAG chat functionality and context accuracy
-  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+- [x] 5. Deploy LangGraph Agent on Bedrock AgentCore
+
+
+
+
+
+
+  - Create Bedrock Agent using AgentCore with LangGraph workflow
+  - Package LangGraph agent as Lambda action group for Bedrock
+  - Set up Bedrock Knowledge Base with S3 data source integration
+  - Configure agent with Claude/Nova foundation model
+  - Implement LangGraph workflow nodes: intent detection, document processing, RAG retrieval
+  - Add conditional routing based on user intent (summarize, question, quiz, analytics)
+  - Create production alias for stable agent deployment
+  - **Deploy Bedrock Agent with LangGraph action group to AWS**
+  - **Test agent via Bedrock console: "summarize my uploaded document"**
+  - **Verify intent detection routes to correct workflow nodes**
+  - **Test Knowledge Base retrieval with user documents**
+  - Write tests for Bedrock Agent integration and LangGraph workflow execution
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.1.1, 2.1.2, 2.1.3, 2.1.4, 2.1.5, 2.1.6, 2.1.7_
 
 ### Phase 3: Advanced AI Features
-- [ ] 6. Quiz Generation Lambda Functions
-  - Implement Lambda function for AI quiz generation using Bedrock Agent
-  - Create quiz storage and retrieval with DynamoDB
-  - Build quiz submission and scoring Lambda function
-  - Add Pinecone intelligence updates based on quiz performance
-  - Create comprehensive quiz management endpoints
-  - Write tests for quiz generation, submission, and scoring
+- [x] 6. Extend Bedrock Agent with Quiz Generation and Multi-Language Support
+
+
+
+
+
+  - Add quiz generation action group to Bedrock Agent
+  - Implement Amazon Translate integration in LangGraph workflow
+  - Create language detection node using Amazon Comprehend
+  - Build translation workflow with round-trip translation capabilities
+  - Add quiz storage and retrieval with DynamoDB integration
+  - Implement quiz submission and scoring with learning analytics
+  - Update agent version and production alias with new capabilities
+  - **Deploy updated Bedrock Agent with quiz and translation features**
+  - **Test via Bedrock console: "create a quiz from my physics notes"**
+  - **Test multi-language support with Spanish/French input**
+  - **Verify quiz submission and scoring functionality**
+  - Write tests for quiz generation, translation, and scoring accuracy
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 7. Voice Interview WebSocket Lambda Functions
-  - Set up API Gateway WebSocket with Lambda integration
-  - Implement Lambda functions for WebSocket connection management
-  - Integrate AWS Transcribe streaming API for real-time speech-to-text
-  - Create interview session management with Bedrock Agent responses
-  - Add performance analysis and transcript storage in DynamoDB
-  - Write tests for WebSocket Lambda functions and audio processing
+- [x] 7. Voice Interview Integration with Bedrock Agent
+
+
+
+
+
+
+
+
+  - Add voice processing action group to Bedrock Agent
+  - Set up API Gateway WebSocket with Bedrock Agent integration
+  - Implement AWS Transcribe streaming API for real-time speech-to-text
+  - Create voice interview workflow in LangGraph with Bedrock Agent
+  - Add interview session management with agent conversation memory
+  - Implement performance analysis and transcript storage in DynamoDB
+  - **Deploy voice processing action group to Bedrock Agent**
+  - **Test voice interview via Bedrock Agent Runtime API**
+  - **Verify real-time transcription and AI responses**
+  - **Test interview session management and transcript storage**
+  - Write tests for voice processing integration and interview workflows
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.1.1, 7.1.2, 7.1.3, 7.1.4, 7.1.5_
 
-- [ ] 8. Personalization and Analytics Lambda Functions
-  - Implement Pinecone-based user intelligence tracking across interactions
-  - Create Lambda functions for concept mastery calculation and analytics
-  - Build personalized recommendation system using vector similarity
-  - Add teacher analytics Lambda with AI insights from user data
-  - Create comprehensive analytics and reporting endpoints
-  - Write tests for personalization algorithms and analytics accuracy
+- [x] 8. Learning Analytics Integration with Bedrock Agent
+
+
+
+
+
+  - Add learning analytics action group to Bedrock Agent
+  - Implement analytics tracking in LangGraph workflow nodes
+  - Use Amazon Comprehend for sentiment analysis and learning progress tracking
+  - Create concept mastery calculation using Bedrock Knowledge Base similarity
+  - Build personalized recommendation system with agent conversation history
+  - Add teacher analytics with AI insights from agent interaction data
+  - **Deploy learning analytics action group to Bedrock Agent**
+  - **Test analytics via Bedrock Agent: "show my learning progress"**
+  - **Verify sentiment analysis and concept mastery calculations**
+  - **Test teacher analytics dashboard with real agent conversation data**
+  - Write tests for learning analytics accuracy and recommendation quality
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
 ### Phase 4: Subject Integration & Polish
-- [ ] 9. Subject and Assignment Integration
+- [x] 9. Subject and Assignment Integration
+
+
+
+
+
   - Create subject-specific AI chat and file management
   - Implement assignment-based quiz generation for teachers
   - Build teacher dashboard endpoints with AI-enhanced analytics
@@ -88,6 +159,13 @@ Convert the LMS API backend design into a series of implementation tasks that bu
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
 - [ ] 10. API Documentation and Error Handling
+
+
+
+
+
+
+
   - Generate comprehensive OpenAPI documentation with examples
   - Implement global exception handlers with proper error responses
   - Add request/response validation with Pydantic models
@@ -106,13 +184,13 @@ Convert the LMS API backend design into a series of implementation tasks that bu
   - _Requirements: 1.3, 2.1, 7.1.1_
 
 ### Phase 5: Authentication & Frontend Integration
-- [ ] 12. Lambda Authentication and User Management
-  - Implement API Gateway Lambda authorizer for Supabase JWT validation
-  - Create user context extraction from existing Supabase users table
-  - Add role-based access control in Lambda authorizer (teacher/student)
-  - Implement Lambda response helpers and error handling
-  - Update all existing endpoints to use proper authentication
-  - Write tests for Lambda authorizer and user context
+- [ ] 12. Bedrock Agent Authentication and User Management
+  - Implement API Gateway Lambda authorizer for Bedrock Agent access
+  - Create user context extraction and session management for agent
+  - Add role-based access control for agent invocation (teacher/student)
+  - Implement agent session isolation and user-specific context
+  - Update Bedrock Agent configuration with proper IAM roles
+  - Write tests for agent authentication and user context isolation
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
 - [ ] 13. Integration Testing and Frontend Compatibility
@@ -132,6 +210,41 @@ Convert the LMS API backend design into a series of implementation tasks that bu
   - Set up CloudWatch monitoring, logging, and alerting
   - Write serverless deployment documentation and troubleshooting guides
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+
+## Deployment and Testing Strategy
+
+### 🚀 **Continuous Deployment Approach**
+After every task completion:
+1. **Deploy to AWS Lambda** using SAM or direct deployment
+2. **Create/Update Manual Testing Interface** (HTML page with API calls)
+3. **Test Core Functionality** with real AWS services
+4. **Verify Integration** with previous features
+5. **Document Results** and any issues found
+
+### 🧪 **Manual Testing Requirements**
+Each deployment must include:
+- **Web Interface**: Simple HTML page for testing API endpoints
+- **Real Data Testing**: Use actual documents, conversations, and user interactions
+- **AWS Service Verification**: Confirm Textract, Comprehend, Translate, Bedrock work correctly
+- **Error Handling**: Test edge cases and error scenarios
+- **Performance Check**: Verify response times and Lambda execution
+
+### 📋 **Testing Checklist Per Task**
+- [ ] Lambda function deploys successfully
+- [ ] API endpoints respond correctly
+- [ ] AWS services integrate properly
+- [ ] Manual testing interface works
+- [ ] Core functionality verified
+- [ ] Error handling tested
+- [ ] Performance acceptable
+- [ ] Documentation updated
+
+### 🔧 **Deployment Tools**
+- **AWS SAM**: For infrastructure as code deployment
+- **Direct Lambda Upload**: For quick iterations
+- **API Gateway**: For REST and WebSocket endpoints
+- **CloudWatch**: For monitoring and debugging
+- **Manual Testing Pages**: HTML interfaces for each feature
 
 ## Development Strategy Benefits
 

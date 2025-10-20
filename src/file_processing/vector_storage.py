@@ -15,8 +15,13 @@ try:
     from pinecone import Pinecone
     PINECONE_AVAILABLE = True
 except ImportError:
-    PINECONE_AVAILABLE = False
-    print("Warning: Pinecone not available. Install with: pip install pinecone")
+    try:
+        # Fallback for older pinecone-client package
+        import pinecone
+        PINECONE_AVAILABLE = True
+    except ImportError:
+        PINECONE_AVAILABLE = False
+        print("Warning: Pinecone not available. Install with: pip install pinecone")
 
 logger = logging.getLogger(__name__)
 

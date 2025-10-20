@@ -1,6 +1,6 @@
 """
 Agent Invocation Utilities
-Provides high-level utilities for invoking Bedrock Agents with proper context management
+Provides high-level utilities for invoking LangGraph + Bedrock Agents with proper context management
 """
 
 import json
@@ -16,6 +16,7 @@ from .bedrock_agent_service import (
     AgentResponse,
     BedrockAgentError
 )
+from .langgraph_agent_service import LangGraphAgentService
 from .config import config
 
 logger = logging.getLogger(__name__)
@@ -23,12 +24,15 @@ logger = logging.getLogger(__name__)
 
 class AgentInvoker:
     """
-    High-level utility class for invoking Bedrock Agents with context management
+    High-level utility class for invoking LangGraph + Bedrock Agents with context management
     """
     
     def __init__(self):
-        """Initialize Agent Invoker"""
+        """Initialize Agent Invoker with LangGraph and Bedrock services"""
         self.bedrock_service = BedrockAgentService()
+        self.langgraph_service = LangGraphAgentService()
+        self.use_langgraph = True  # Primary workflow system
+        logger.info("AgentInvoker initialized with LangGraph + Bedrock integration")
     
     async def chat_with_context(
         self,
@@ -40,7 +44,7 @@ class AgentInvoker:
         user_profile: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Invoke chat agent with full context
+        Invoke chat agent with LangGraph workflow and Bedrock fallback
         
         Args:
             user_id: User identifier
@@ -57,6 +61,73 @@ class AgentInvoker:
         try:
             # Create session ID if not provided
             session_id = conversation_id or f"chat-{user_id}-{int(datetime.utcnow().timestamp())}"
+            
+            if self.use_langgraph:
+                # Primary: Use LangGraph workflow
+                logger.info("Processing chat with LangGraph workflow")
+                
+                # Build agent context
+                context = AgentContext(
+                    user_id=user_id,
+                    session_id=session_id,
+                    rag_context=rag_context or [],
+                    user_profile=user_profile or {},
+                    subject_context=subject_id
+                )
+                
+                # Process with LangGraph
+                response = await self.langgraph_service.process_message(
+                    user_id=user_id,
+                    message=message,
+                    session_id=session_id,
+                    context=context
+                )
+                
+                if response["success"]:
+                    return {
+                        'success': True,
+                        'response': response["response"],
+                        'session_id': response["session_id"],
+                        'citations': response["citations"],
+                        'metadata': {
+                            'agent_type': 'langgraph',
+                            'workflow_type': 'langgraph',
+                            'intent': response["intent"],
+                            'language': response["language"],
+                            'tools_used': response["tools_used"],
+                            'timestamp': datetime.utcnow().isoformat(),
+                            'user_id': user_id,
+                            'subject_id': subject_id,
+                            'rag_documents_used': len(rag_context) if rag_context else 0,
+                            **response["metadata"]
+                        }
+                    }
+                else:
+                    # LangGraph failed, try Bedrock fallback
+                    logger.warning("LangGraph failed, attempting Bedrock fallback")
+                    return await self._bedrock_fallback(user_id, message, session_id, subject_id, rag_context, user_profile)
+            
+            else:
+                # Direct Bedrock usage
+                return await self._bedrock_fallback(user_id, message, session_id, subject_id, rag_context, user_profile)
+            
+        except Exception as e:
+            logger.error(f"Error in chat_with_context: {str(e)}")
+            return await self._bedrock_fallback(user_id, message, session_id, subject_id, rag_context, user_profile)
+    
+    async def _bedrock_fallback(
+        self,
+        user_id: str,
+        message: str,
+        session_id: str,
+        subject_id: Optional[str] = None,
+        rag_context: Optional[List[Dict[str, Any]]] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Fallback to Bedrock agent service"""
+        
+        try:
+            logger.info("Using Bedrock agent fallback")
             
             # Build agent context
             context = AgentContext(
@@ -81,7 +152,8 @@ class AgentInvoker:
                 'session_id': response.session_id,
                 'citations': response.citations,
                 'metadata': {
-                    'agent_type': 'chat',
+                    'agent_type': 'bedrock_chat',
+                    'workflow_type': 'bedrock_fallback',
                     'timestamp': datetime.utcnow().isoformat(),
                     'user_id': user_id,
                     'subject_id': subject_id,
@@ -91,19 +163,21 @@ class AgentInvoker:
             }
             
         except BedrockAgentError as e:
-            logger.error(f"Bedrock Agent error in chat: {str(e)}")
+            logger.error(f"Bedrock Agent error in fallback: {str(e)}")
             return {
                 'success': False,
                 'error': str(e),
                 'error_code': e.error_code,
-                'agent_type': 'chat'
+                'agent_type': 'bedrock_chat',
+                'workflow_type': 'bedrock_fallback'
             }
         except Exception as e:
-            logger.error(f"Unexpected error in chat: {str(e)}")
+            logger.error(f"Unexpected error in Bedrock fallback: {str(e)}")
             return {
                 'success': False,
                 'error': f"Unexpected error: {str(e)}",
-                'agent_type': 'chat'
+                'agent_type': 'bedrock_chat',
+                'workflow_type': 'bedrock_fallback'
             }
     
     async def generate_quiz(
@@ -449,35 +523,64 @@ class AgentInvoker:
                 'raw_response': response_content
             }
     
+    def toggle_workflow(self, use_langgraph: bool = True) -> Dict[str, str]:
+        """
+        Toggle between LangGraph and Bedrock workflows
+        
+        Args:
+            use_langgraph: Whether to use LangGraph as primary workflow
+            
+        Returns:
+            Dictionary with status message
+        """
+        
+        self.use_langgraph = use_langgraph
+        workflow_type = "LangGraph" if use_langgraph else "Bedrock"
+        
+        logger.info(f"Switched to {workflow_type} workflow")
+        
+        return {
+            'status': 'success',
+            'message': f"Switched to {workflow_type} workflow",
+            'primary_workflow': workflow_type.lower()
+        }
+    
     def get_service_status(self) -> Dict[str, Any]:
         """
-        Get status of Bedrock Agent service
+        Get status of LangGraph + Bedrock Agent services
         
         Returns:
             Dictionary with service status information
         """
         
         try:
-            validation_results = self.bedrock_service.validate_configuration()
-            agent_info = self.bedrock_service.get_agent_info()
+            bedrock_validation = self.bedrock_service.validate_configuration()
+            bedrock_info = self.bedrock_service.get_agent_info()
+            langgraph_info = self.langgraph_service.get_workflow_info()
             
             return {
                 'service_initialized': True,
-                'agent_validation': validation_results,
-                'agent_info': agent_info,
+                'primary_workflow': 'langgraph' if self.use_langgraph else 'bedrock',
+                'langgraph_workflow': langgraph_info,
+                'bedrock_agents': {
+                    'validation': bedrock_validation,
+                    'info': bedrock_info
+                },
                 'configuration': {
                     'max_retries': config.BEDROCK_MAX_RETRIES,
                     'retry_delay': config.BEDROCK_RETRY_DELAY,
                     'timeout_seconds': config.BEDROCK_TIMEOUT_SECONDS,
                     'model_id': config.BEDROCK_MODEL_ID,
                     'embedding_model_id': config.BEDROCK_EMBEDDING_MODEL_ID
-                }
+                },
+                'timestamp': datetime.utcnow().isoformat()
             }
             
         except Exception as e:
             return {
                 'service_initialized': False,
-                'error': str(e)
+                'error': str(e),
+                'timestamp': datetime.utcnow().isoformat()
             }
 
 

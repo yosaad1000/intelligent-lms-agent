@@ -54,6 +54,20 @@ This approach keeps the API stateless while enabling real-time voice interaction
 4. WHEN a user requests GET /api/chat/history THEN the system SHALL return their conversation history
 5. WHEN the AI cannot find relevant information THEN the system SHALL provide a helpful fallback response
 
+### Requirement 2.1: Intelligent Document Summarization
+
+**User Story:** As a user, I want the AI to automatically understand when I'm asking for document summaries and provide appropriate summaries based on my natural language requests, so that I can get document insights through conversational interaction.
+
+#### Acceptance Criteria
+
+1. WHEN a user sends natural language requests like "summarize my physics notes" or "give me the key points from the uploaded document" THEN the AI SHALL recognize the summarization intent and generate appropriate summaries
+2. WHEN the AI detects summarization intent THEN it SHALL retrieve the full document content using RAG and generate comprehensive summaries with key points, main concepts, and important details
+3. WHEN a user mentions a specific document by name THEN the AI SHALL focus summarization on that particular document
+4. WHEN no specific document is mentioned but summarization is requested THEN the AI SHALL either summarize the most relevant document or ask for clarification
+5. WHEN generating summaries THEN the AI SHALL adapt the summary style and length based on the user's request (e.g., "brief summary" vs "detailed overview")
+6. WHEN providing summaries THEN the AI SHALL include source citations and document references
+7. WHEN the user asks follow-up questions about the summary THEN the AI SHALL provide deeper insights and explanations from the document content
+
 ### Requirement 3: Quiz Generation API
 
 **User Story:** As a teacher or student, I want to generate quizzes from my uploaded documents, so that I can test knowledge and understanding of the material.

@@ -1,90 +1,112 @@
-# LMS Lambda Architecture - Serverless Backend
+# LMS Bedrock AgentCore Architecture - Managed AI Backend
 
-## Pure Lambda Serverless Architecture
+## Bedrock AgentCore + Lambda Hybrid Architecture
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    React Frontend                           │
+│              External Systems (Optional)                    │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────┐│
-│  │    File     │ │   AI Chat   │ │    Quiz     │ │ Voice  ││
-│  │   Upload    │ │ Interface   │ │ Interface   │ │Interview││
+│  │   Mobile    │ │    Web      │ │   Desktop   │ │  API   ││
+│  │    Apps     │ │    Apps     │ │    Apps     │ │Clients ││
 │  └─────────────┘ └─────────────┘ └─────────────┘ └────────┘│
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    API Gateway                              │
+│              API Gateway (Optional)                         │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                Lambda Functions Layer                       │
+│              Bedrock AgentCore (Managed)                    │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  LMS Learning Assistant Agent (Production Alias)       ││
+│  │  • Knowledge Base Integration                           ││
+│  │  • Action Groups (Custom Tools)                        ││
+│  │  • Bedrock Flows (Complex Workflows)                   ││
+│  │  • Built-in Memory & Session Management                ││
+│  └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│            Lambda Action Groups (Custom Tools)             │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────┐│
-│  │    File     │ │   AI Chat   │ │    Quiz     │ │ Voice  ││
-│  │ Processing  │ │   Lambda    │ │  Generator  │ │Interview││
-│  │   Lambda    │ │             │ │   Lambda    │ │ Lambda ││
+│  │ Document    │ │ Quiz        │ │ Analytics   │ │ Voice  ││
+│  │ Processor   │ │ Generator   │ │ Tracker     │ │Processor││
+│  │ (Textract)  │ │ (Bedrock)   │ │ (DynamoDB)  │ │(Transcr)││
 │  └─────────────┘ └─────────────┘ └─────────────┘ └────────┘│
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              AWS Services Layer                             │
-│  S3 Storage   DynamoDB    Bedrock Agents    Transcribe     │
-│  Pinecone     Knowledge   Multiple Agents   Real-time      │
-│  Vectors      Base        Specialized AI    Processing     │
+│              AWS Managed Services Layer                     │
+│  S3 Storage   DynamoDB    Bedrock Models    OpenSearch     │
+│  Knowledge    Session     Claude/Nova       Serverless     │
+│  Base         Memory      Foundation LLMs   Vector Store   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Serverless Lambda Strategy
-- **Individual Lambda Functions**: Each service as separate Lambda function
-- **API Gateway Integration**: RESTful API endpoints routing to Lambda
-- **Event-Driven Architecture**: S3 triggers, DynamoDB streams, SQS queues
-- **Stateless Design**: All state managed in AWS services (DynamoDB, S3)
+## Bedrock AgentCore Strategy
+- **Managed Agent Deployment**: Production-grade agents on AWS AgentCore
+- **Lambda Action Groups**: Custom tools as Lambda functions called by agent
+- **Knowledge Base Integration**: Managed RAG with S3 data sources
+- **Bedrock Flows**: Visual workflow orchestration for complex logic
+- **Built-in Session Management**: No custom memory implementation needed
 
 ## Key Technology Stack
-- **Frontend**: React application with existing UI components
-- **API Layer**: AWS API Gateway with Lambda integration
-- **Authentication**: Supabase Auth with Lambda authorizer
-- **Database**: DynamoDB for sessions, Supabase for persistent data
-- **Intelligence**: Multiple specialized Bedrock Agents
-- **Storage**: S3 for files, Pinecone for vectors
-- **Real-time**: WebSocket API Gateway for voice interviews
-- **Deployment**: AWS SAM for Infrastructure as Code
+- **Frontend**: React application with Bedrock Agent integration
+- **API Layer**: AWS API Gateway with Bedrock Agent Runtime
+- **AI Core**: Amazon Bedrock AgentCore (fully managed)
+- **Authentication**: AWS Cognito with IAM roles
+- **Database**: DynamoDB for user data, built-in agent memory
+- **Intelligence**: Single LMS Agent with multiple action groups
+- **Storage**: S3 for files, Bedrock Knowledge Base for vectors
+- **Workflows**: Bedrock Flows for complex conditional logic
+- **Deployment**: AWS SAM + Bedrock Agent deployment
 
-## Lambda Functions Architecture
+## Bedrock Agent + Lambda Action Groups Architecture
 
-### Core Lambda Functions
-1. **File Processing Lambda** (`src/file_processing/file_handler.py`)
-   - File upload presigned URLs
-   - Text extraction and chunking
-   - Vector embedding generation
-   - Pinecone storage integration
+### Core Bedrock Agent
+**LMS Learning Assistant Agent** (Deployed on AgentCore)
+- **Foundation Model**: Amazon Nova Micro (development), Nova Pro (production)
+- **Knowledge Base**: S3-backed document repository with vector search
+- **Session Management**: Built-in conversation memory and context
+- **Production Alias**: Stable endpoint for frontend integration
 
-2. **AI Chat Lambda** (`src/chat/chat_handler.py`)
-   - Conversation management
-   - RAG-enhanced responses
-   - Bedrock Agent integration
-   - Chat history persistence
+### Lambda Action Groups (Custom Tools)
+1. **Document Processor Action Group** (`src/actions/document_processor.py`)
+   - Textract integration for advanced document parsing
+   - Comprehend analysis for entity extraction
+   - S3 upload handling and metadata extraction
+   - Knowledge Base data source synchronization
 
-3. **Quiz Generator Lambda** (`src/quiz_generator/quiz_handler.py`)
-   - AI-powered quiz generation
-   - Question validation
-   - Scoring and analytics
-   - Progress tracking
+2. **Quiz Generator Action Group** (`src/actions/quiz_generator.py`)
+   - Content-based quiz generation using Bedrock
+   - Question difficulty adjustment
+   - Answer validation and scoring
+   - Progress analytics integration
 
-4. **Voice Interview Lambda** (`src/voice_interview/interview_handler.py`)
+3. **Analytics Tracker Action Group** (`src/actions/analytics_tracker.py`)
+   - Learning progress monitoring
+   - Performance metrics calculation
+   - Recommendation engine integration
+   - DynamoDB data persistence
+
+4. **Voice Processor Action Group** (`src/actions/voice_processor.py`)
+   - AWS Transcribe integration
    - Real-time audio processing
-   - Transcription via AWS Transcribe
-   - AI-powered interview analysis
-   - Performance feedback
+   - Interview analysis and feedback
+   - Multi-language support
 
-5. **Auth Lambda** (`src/auth/authorizer.py`)
-   - Supabase JWT validation
-   - User authorization
-   - Role-based access control
+5. **API Gateway Proxy** (`src/api/agent_proxy.py`)
+   - Bedrock Agent Runtime integration
+   - Authentication and authorization
+   - Request/response formatting
+   - Error handling and logging
 
 ## Security Requirements
 - Lambda authorizer for all API endpoints
-- Supabase JWT token validation
+- Supabase JWT token validation (development), AWS Cognito (production)
 - IAM least privilege policies for each Lambda
 - S3 server-side encryption (SSE-S3)
 - DynamoDB encryption at rest

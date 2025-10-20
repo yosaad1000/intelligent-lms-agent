@@ -1,0 +1,82 @@
+{
+  "summary": {
+    "total_tests": 12,
+    "passed": 11,
+    "failed": 1,
+    "success_rate": 91.66666666666666
+  },
+  "results": [
+    {
+      "test": "Service Initialization",
+      "success": true,
+      "message": "LangGraph service initialized successfully",
+      "timestamp": "2025-10-19T21:04:49.156404"
+    },
+    {
+      "test": "Workflow Creation",
+      "success": true,
+      "message": "Workflow graph created with all nodes",
+      "timestamp": "2025-10-19T21:04:49.157019"
+    },
+    {
+      "test": "Intent Detection",
+      "success": true,
+      "message": "Tested 5 intent detection cases",
+      "timestamp": "2025-10-19T21:04:55.406988"
+    },
+    {
+      "test": "Language Detection",
+      "success": true,
+      "message": "Tested 3 language detection cases",
+      "timestamp": "2025-10-19T21:04:59.607462"
+    },
+    {
+      "test": "RAG Integration",
+      "success": true,
+      "message": "RAG retrieval node executed successfully",
+      "timestamp": "2025-10-19T21:04:59.608438"
+    },
+    {
+      "test": "Memory Integration",
+      "success": false,
+      "message": "Memory integration failed: An error occurred (UnrecognizedClientException) when calling the PutItem operation: The security token included in the request is invalid.",
+      "timestamp": "2025-10-19T21:05:00.836662"
+    },
+    {
+      "test": "AWS Services Integration",
+      "success": true,
+      "message": "All AWS services initialized",
+      "timestamp": "2025-10-19T21:05:00.837601"
+    },
+    {
+      "test": "Summarization Workflow",
+      "success": true,
+      "message": "Complete summarization workflow successful",
+      "timestamp": "2025-10-19T21:05:07.685740"
+    },
+    {
+      "test": "Question Answering Workflow",
+      "success": true,
+      "message": "Q&A workflow successful",
+      "timestamp": "2025-10-19T21:05:12.107724"
+    },
+    {
+      "test": "Quiz Generation Workflow",
+      "success": true,
+      "message": "Quiz generation workflow successful",
+      "timestamp": "2025-10-19T21:05:17.322849"
+    },
+    {
+      "test": "Translation Workflow",
+      "success": true,
+      "message": "Translation workflow successful",
+      "timestamp": "2025-10-19T21:05:21.316561"
+    },
+    {
+      "test": "Agent Invoker Integration",
+      "success": true,
+      "message": "Agent invoker integration successful",
+      "timestamp": "2025-10-19T21:05:28.076454"
+    }
+  ]
+}

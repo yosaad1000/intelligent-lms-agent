@@ -1,2 +1,19 @@
-boto3>=1.40.0
+# LangGraph AI Agent Chat Handler Requirements - Simplified for Lambda
+
+# Core AWS SDK (already available in Lambda runtime)
+boto3>=1.34.0
+
+# Essential packages only
+requests>=2.31.0
 python-dotenv>=1.0.0
+
+# LangChain core (minimal)
+langchain-core>=0.1.0
+langchain-aws>=0.1.0
+
+# Async support (built-in to Python)
+# asyncio - built-in
+# aiohttp - too large for Lambda, use requests instead
+
+# Type hints (built-in to Python 3.9+)
+# typing-extensions - built-in

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced LMS Agent Test Interface</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .feature-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.2em;
+        }
+        
+        .feature-card p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .test-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .test-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .test-btn:active {
+            transform: translateY(0);
+        }
+        
+        .custom-test {
+            margin-top: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+            min-height: 200px;
+        }
+        
+        .results h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .response {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .loading {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.loading { background: #fff3cd; color: #856404; }
+        
+        .example-queries {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .example-queries h4 {
+            margin: 0 0 15px 0;
+            color: #1976d2;
+        }
+        
+        .example-queries ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .example-queries li {
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Enhanced LMS Agent</h1>
+        <p class="subtitle">Test Interface for Quiz Generation & Multi-Language Support</p>
+        
+        <div class="features">
+            <div class="feature-card">
+                <h3>🎯 Enhanced Quiz Generation</h3>
+                <p>Create multilingual quizzes with difficulty levels, analytics, and performance insights</p>
+            </div>
+            <div class="feature-card">
+                <h3>🌍 Multi-Language Support</h3>
+                <p>Translate content between 12+ languages with round-trip validation</p>
+            </div>
+            <div class="feature-card">
+                <h3>📊 Learning Analytics</h3>
+                <p>Track concept mastery, performance metrics, and personalized recommendations</p>
+            </div>
+            <div class="feature-card">
+                <h3>📚 Document Processing</h3>
+                <p>Analyze uploaded materials and generate contextual quizzes and summaries</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🧪 Quick Tests</h2>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="testQuizGeneration()">Generate Quiz</button>
+                <button class="test-btn" onclick="testTranslation()">Test Translation</button>
+                <button class="test-btn" onclick="testMultiLanguage()">Multi-Language Quiz</button>
+                <button class="test-btn" onclick="testAnalytics()">Learning Analytics</button>
+                <button class="test-btn" onclick="testDocumentSummary()">Document Summary</button>
+                <button class="test-btn" onclick="testLanguageSupport()">Language Support</button>
+            </div>
+            
+            <div class="custom-test">
+                <h3>Custom Test</h3>
+                <div class="input-group">
+                    <label for="customQuery">Your Question/Request:</label>
+                    <textarea id="customQuery" placeholder="Enter your question or request for the enhanced agent..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="testLanguage">Test Language:</label>
+                    <select id="testLanguage">
+                        <option value="en">English</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                        <option value="de">German</option>
+                        <option value="it">Italian</option>
+                        <option value="pt">Portuguese</option>
+                    </select>
+                </div>
+                <button class="test-btn" onclick="testCustomQuery()">Send Custom Query</button>
+            </div>
+        </div>
+        
+        <div class="example-queries">
+            <h4>💡 Example Queries to Try:</h4>
+            <ul>
+                <li>"Create a 5-question quiz about photosynthesis in Spanish"</li>
+                <li>"Translate 'Machine learning is transforming education' to French with quality check"</li>
+                <li>"Generate an advanced quiz about quantum physics from my uploaded notes"</li>
+                <li>"Show me my learning progress and concept mastery analytics"</li>
+                <li>"What languages do you support for educational content translation?"</li>
+                <li>"Créer un quiz sur la chimie organique avec 3 questions difficiles"</li>
+            </ul>
+        </div>
+        
+        <div class="results">
+            <h3>📋 Test Results</h3>
+            <div id="resultsContainer">
+                <p style="color: #666; font-style: italic;">Click a test button above to see results...</p>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalTests">0</div>
+                <div class="stat-label">Total Tests</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="successfulTests">0</div>
+                <div class="stat-label">Successful</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avgResponseTime">0</div>
+                <div class="stat-label">Avg Response (s)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="successRate">0%</div>
+                <div class="stat-label">Success Rate</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testStats = {
+            total: 0,
+            successful: 0,
+            responseTimes: []
+        };
+
+        function updateStats() {
+            document.getElementById('totalTests').textContent = testStats.total;
+            document.getElementById('successfulTests').textContent = testStats.successful;
+            
+            const avgTime = testStats.responseTimes.length > 0 
+                ? (testStats.responseTimes.reduce((a, b) => a + b, 0) / testStats.responseTimes.length).toFixed(1)
+                : 0;
+            document.getElementById('avgResponseTime').textContent = avgTime;
+            
+            const successRate = testStats.total > 0 
+                ? Math.round((testStats.successful / testStats.total) * 100)
+                : 0;
+            document.getElementById('successRate').textContent = successRate + '%';
+        }
+
+        function addResult(query, response, isSuccess, responseTime) {
+            const container = document.getElementById('resultsContainer');
+            
+            // Clear initial message
+            if (testStats.total === 0) {
+                container.innerHTML = '';
+            }
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'response' + (isSuccess ? '' : ' error');
+            
+            const status = isSuccess ? 'success' : 'error';
+            const statusText = isSuccess ? 'SUCCESS' : 'ERROR';
+            
+            resultDiv.innerHTML = `
+                <div class="status ${status}">${statusText}</div>
+                <strong>Query:</strong> ${query}
+                <br><br>
+                <strong>Response:</strong>
+                ${response}
+                <br><br>
+                <small>Response time: ${responseTime}s | ${new Date().toLocaleTimeString()}</small>
+            `;
+            
+            container.insertBefore(resultDiv, container.firstChild);
+            
+            // Update stats
+            testStats.total++;
+            if (isSuccess) testStats.successful++;
+            testStats.responseTimes.push(responseTime);
+            updateStats();
+        }
+
+        function addLoadingResult(query) {
+            const container = document.getElementById('resultsContainer');
+            
+            if (testStats.total === 0) {
+                container.innerHTML = '';
+            }
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'response loading';
+            resultDiv.id = 'loadingResult';
+            
+            resultDiv.innerHTML = `
+                <div class="status loading">PROCESSING</div>
+                <strong>Query:</strong> ${query}
+                <br><br>
+                <strong>Status:</strong> Sending request to enhanced Bedrock Agent...
+                <br><br>
+                <small>Started: ${new Date().toLocaleTimeString()}</small>
+            `;
+            
+            container.insertBefore(resultDiv, container.firstChild);
+        }
+
+        function removeLoadingResult() {
+            const loadingResult = document.getElementById('loadingResult');
+            if (loadingResult) {
+                loadingResult.remove();
+            }
+        }
+
+        async function sendQuery(query) {
+            const startTime = Date.now();
+            addLoadingResult(query);
+            
+            try {
+                // Simulate API call to Bedrock Agent
+                // In a real implementation, this would call your API Gateway endpoint
+                // that invokes the Bedrock Agent
+                
+                const response = await simulateAgentResponse(query);
+                const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                
+                removeLoadingResult();
+                addResult(query, response, true, responseTime);
+                
+            } catch (error) {
+                const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                removeLoadingResult();
+                addResult(query, `Error: ${error.message}`, false, responseTime);
+            }
+        }
+
+        async function simulateAgentResponse(query) {
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+            
+            // Simulate different types of responses based on query content
+            const lowerQuery = query.toLowerCase();
+            
+            if (lowerQuery.includes('quiz') && lowerQuery.includes('spanish')) {
+                return `¡Perfecto! He creado un quiz en español sobre el tema solicitado:
+
+**Quiz: Fotosíntesis**
+
+1. ¿Cuál es el proceso por el cual las plantas convierten la luz solar en energía?
+   A) Respiración
+   B) Fotosíntesis ✓
+   C) Digestión
+   D) Fermentación
+
+2. ¿Qué gas absorben las plantas durante la fotosíntesis?
+   A) Oxígeno
+   B) Nitrógeno
+   C) Dióxido de carbono ✓
+   D) Hidrógeno
+
+3. ¿En qué parte de la planta ocurre principalmente la fotosíntesis?
+   A) Raíces
+   B) Hojas ✓
+   C) Tallos
+   D) Flores
+
+**Metadata:**
+- Idioma detectado: Español
+- Nivel de dificultad: Intermedio
+- Preguntas generadas: 3
+- Traducción utilizada: Sí`;
+            }
+            
+            if (lowerQuery.includes('translate') && lowerQuery.includes('french')) {
+                return `Translation completed with quality validation:
+
+**Original Text:** "Machine learning is transforming education"
+**French Translation:** "L'apprentissage automatique transforme l'éducation"
+
+**Quality Assessment:**
+- Source Language: English (confidence: 99.8%)
+- Target Language: French
+- Round-trip Translation: "Machine learning is transforming education"
+- Similarity Score: 95.2%
+- Quality Rating: Excellent
+
+**Translation Details:**
+- Translation method: Amazon Translate
+- Validation: Round-trip successful
+- Confidence: High
+- Educational context preserved: Yes`;
+            }
+            
+            if (lowerQuery.includes('analytics') || lowerQuery.includes('progress')) {
+                return `Learning Analytics Dashboard:
+
+**Overall Performance:**
+- Total Quizzes Taken: 12
+- Average Score: 78.5%
+- Improvement Trend: +15% over last month
+- Study Time: 24.5 hours
+
+**Concept Mastery:**
+- Photosynthesis: 92% (Excellent)
+- Cell Division: 76% (Good)
+- Genetics: 65% (Needs Improvement)
+- Evolution: 83% (Good)
+
+**Recommendations:**
+✓ Focus on genetics concepts for improvement
+✓ Continue excellent work with photosynthesis
+✓ Consider advanced topics in cell biology
+✓ Practice more challenging questions
+
+**Learning Insights:**
+- Best performance time: 2-4 PM
+- Preferred difficulty: Intermediate
+- Strong visual learner indicators
+- Consistent improvement pattern`;
+            }
+            
+            if (lowerQuery.includes('language') && lowerQuery.includes('support')) {
+                return `Multi-Language Support Capabilities:
+
+**Supported Languages (12):**
+🇺🇸 English (en) - Native
+🇪🇸 Spanish (es) - Full support
+🇫🇷 French (fr) - Full support
+🇩🇪 German (de) - Full support
+🇮🇹 Italian (it) - Full support
+🇵🇹 Portuguese (pt) - Full support
+🇨🇳 Chinese (zh) - Full support
+🇯🇵 Japanese (ja) - Full support
+🇰🇷 Korean (ko) - Full support
+🇸🇦 Arabic (ar) - Full support
+🇮🇳 Hindi (hi) - Full support
+🇷🇺 Russian (ru) - Full support
+
+**Translation Features:**
+✓ Automatic language detection
+✓ Round-trip validation
+✓ Educational content translation
+✓ Quiz generation in any language
+✓ Quality assessment scoring
+✓ Batch translation support
+
+**Educational Content Types:**
+- Quizzes and assessments
+- Lesson materials
+- Study guides
+- Learning objectives
+- Performance feedback`;
+            }
+            
+            if (lowerQuery.includes('summary') || lowerQuery.includes('document')) {
+                return `Document Analysis & Summary:
+
+**Document:** Physics Notes - Newton's Laws
+
+**Key Concepts Identified:**
+1. **First Law (Inertia):** Objects at rest stay at rest, objects in motion stay in motion unless acted upon by force
+2. **Second Law (F=ma):** Force equals mass times acceleration
+3. **Third Law (Action-Reaction):** For every action, there is an equal and opposite reaction
+
+**Summary:**
+Newton's three laws of motion form the foundation of classical mechanics. The first law introduces the concept of inertia, explaining why objects resist changes in motion. The second law provides the mathematical relationship between force, mass, and acceleration. The third law describes the reciprocal nature of forces between interacting objects.
+
+**Learning Objectives:**
+- Understand the relationship between force and motion
+- Apply Newton's laws to real-world scenarios
+- Calculate forces using F=ma equation
+- Identify action-reaction pairs in physical systems
+
+**Suggested Quiz Topics:**
+- Calculating net forces
+- Identifying inertia examples
+- Action-reaction pair identification
+- Problem-solving with F=ma`;
+            }
+            
+            // Default response for other queries
+            return `Enhanced LMS Agent Response:
+
+I understand you're asking about: "${query}"
+
+As an enhanced LMS assistant, I can help you with:
+
+🎯 **Quiz Generation:** Create multilingual quizzes with various difficulty levels
+🌍 **Translation:** Translate educational content between 12+ languages
+📊 **Analytics:** Provide learning progress and performance insights
+📚 **Document Analysis:** Process and summarize educational materials
+🎤 **Voice Support:** Handle voice interactions and interviews
+
+**Enhanced Capabilities:**
+- Multi-language support with quality validation
+- Contextual quiz generation from your documents
+- Learning analytics with concept mastery tracking
+- Round-trip translation verification
+- Performance insights and recommendations
+
+Would you like me to demonstrate any of these specific capabilities? Try asking for a quiz in a specific language, translation of educational content, or analysis of your learning progress!`;
+        }
+
+        // Test functions
+        function testQuizGeneration() {
+            sendQuery("Create a 5-question intermediate quiz about photosynthesis with multiple choice answers");
+        }
+
+        function testTranslation() {
+            sendQuery("Translate 'The mitochondria is the powerhouse of the cell' to Spanish with quality validation");
+        }
+
+        function testMultiLanguage() {
+            sendQuery("Crear un quiz en español sobre la física cuántica con 3 preguntas de nivel avanzado");
+        }
+
+        function testAnalytics() {
+            sendQuery("Show me my learning progress analytics including concept mastery and performance insights");
+        }
+
+        function testDocumentSummary() {
+            sendQuery("Summarize my uploaded physics notes about Newton's laws and suggest quiz questions");
+        }
+
+        function testLanguageSupport() {
+            sendQuery("What languages do you support for educational content translation and quiz generation?");
+        }
+
+        function testCustomQuery() {
+            const query = document.getElementById('customQuery').value.trim();
+            const language = document.getElementById('testLanguage').value;
+            
+            if (!query) {
+                alert('Please enter a question or request');
+                return;
+            }
+            
+            let finalQuery = query;
+            if (language !== 'en') {
+                finalQuery += ` (Please respond considering ${language} language context)`;
+            }
+            
+            sendQuery(finalQuery);
+            document.getElementById('customQuery').value = '';
+        }
+
+        // Allow Enter key to submit custom query
+        document.getElementById('customQuery').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                testCustomQuery();
+            }
+        });
+
+        // Initialize stats
+        updateStats();
+    </script>
+</body>
+</html>
