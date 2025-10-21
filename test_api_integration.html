@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LMS API Integration Test - Task 12</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .header {
+            text-align: center;
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.connected { background: #d4edda; color: #155724; }
+        .status.disconnected { background: #f8d7da; color: #721c24; }
+        .chat-container {
+            display: flex;
+            gap: 20px;
+            height: 600px;
+        }
+        .chat-messages {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .message.user {
+            background: #007bff;
+            color: white;
+            margin-left: 20%;
+        }
+        .message.agent {
+            background: white;
+            border: 1px solid #ddd;
+            margin-right: 20%;
+        }
+        .message-meta {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        .citations {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+        }
+        .citation {
+            background: #f8f9fa;
+            padding: 4px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+        }
+        .tools-used {
+            margin-top: 8px;
+        }
+        .tool {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 2px 6px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .input-area input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .input-area button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .input-area button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .sidebar {
+            width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: white;
+        }
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-button {
+            padding: 8px 16px;
+            margin: 5px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .test-result.success { background: #d4edda; color: #155724; }
+        .test-result.error { background: #f8d7da; color: #721c24; }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 LMS API Integration Test</h1>
+            <p>Task 12: Frontend-Backend API Integration</p>
+            <div id="connection-status" class="status disconnected">Disconnected</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 API Endpoint Tests</h2>
+        <div class="test-section">
+            <h3>Health Check</h3>
+            <button class="test-button" onclick="testHealth()">Test Health Endpoint</button>
+            <div id="health-result" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Agent Capabilities</h3>
+            <button class="test-button" onclick="testCapabilities()">Test Capabilities</button>
+            <div id="capabilities-result" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>File Upload</h3>
+            <input type="file" id="file-input" accept=".pdf,.docx,.txt">
+            <button class="test-button" onclick="testFileUpload()">Test File Upload</button>
+            <div id="upload-result" class="test-result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>💬 Live Chat Test</h2>
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <div class="message agent">
+                    <div>Welcome to the LMS AI Assistant! I'm connected to the real Bedrock Agent.</div>
+                    <div class="message-meta">System message</div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <h3>Chat Info</h3>
+                <p><strong>Session ID:</strong> <span id="session-id">Not set</span></p>
+                <p><strong>User ID:</strong> test-user</p>
+                <p><strong>API URL:</strong> <span id="api-url">Loading...</span></p>
+                
+                <h4>Quick Tests</h4>
+                <button class="test-button" onclick="sendTestMessage('Hello! Can you help me with my studies?')">
+                    Test Greeting
+                </button>
+                <button class="test-button" onclick="sendTestMessage('Summarize my uploaded documents')">
+                    Test Summarization
+                </button>
+                <button class="test-button" onclick="sendTestMessage('Create a quiz about machine learning')">
+                    Test Quiz Generation
+                </button>
+                <button class="test-button" onclick="sendTestMessage('Show my learning progress')">
+                    Test Analytics
+                </button>
+                
+                <h4>Connection</h4>
+                <button class="test-button" onclick="connectWebSocket()">Connect WebSocket</button>
+                <button class="test-button" onclick="disconnectWebSocket()">Disconnect</button>
+                <div id="ws-status">WebSocket: Disconnected</div>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="message-input" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration from deployed API
+        const API_CONFIG = {
+            apiUrl: 'https://7k21xsoz93.execute-api.us-east-1.amazonaws.com/dev',
+            websocketUrl: 'wss://4olkavb3wa.execute-api.us-east-1.amazonaws.com/dev',
+            userId: 'test-user'
+        };
+
+        let currentSessionId = '';
+        let websocket = null;
+        let isConnected = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('api-url').textContent = API_CONFIG.apiUrl;
+            currentSessionId = generateSessionId();
+            document.getElementById('session-id').textContent = currentSessionId;
+            
+            // Test initial connection
+            testHealth();
+        });
+
+        function generateSessionId() {
+            return `session-${API_CONFIG.userId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        }
+
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const statusEl = document.getElementById('connection-status');
+            statusEl.className = `status ${connected ? 'connected' : 'disconnected'}`;
+            statusEl.textContent = connected ? 'Connected' : 'Disconnected';
+        }
+
+        async function testHealth() {
+            const resultEl = document.getElementById('health-result');
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<div class="loading"></div> Testing health endpoint...';
+            
+            try {
+                const response = await fetch(`${API_CONFIG.apiUrl}/api/v1/health`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultEl.className = 'test-result success';
+                    resultEl.innerHTML = `
+                        ✅ Health check passed<br>
+                        Agent ID: ${data.agent_id}<br>
+                        Agent Responsive: ${data.agent_responsive}<br>
+                        Status: ${data.status}
+                    `;
+                    updateConnectionStatus(true);
+                } else {
+                    throw new Error(data.error || 'Health check failed');
+                }
+            } catch (error) {
+                resultEl.className = 'test-result error';
+                resultEl.innerHTML = `❌ Health check failed: ${error.message}`;
+                updateConnectionStatus(false);
+            }
+        }
+
+        async function testCapabilities() {
+            const resultEl = document.getElementById('capabilities-result');
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<div class="loading"></div> Testing capabilities endpoint...';
+            
+            try {
+                const response = await fetch(`${API_CONFIG.apiUrl}/api/v1/capabilities`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultEl.className = 'test-result success';
+                    resultEl.innerHTML = `
+                        ✅ Capabilities loaded (${data.capabilities.length})<br>
+                        ${data.capabilities.map(cap => `• ${cap}`).join('<br>')}
+                    `;
+                } else {
+                    throw new Error(data.error || 'Capabilities test failed');
+                }
+            } catch (error) {
+                resultEl.className = 'test-result error';
+                resultEl.innerHTML = `❌ Capabilities test failed: ${error.message}`;
+            }
+        }
+
+        async function testFileUpload() {
+            const fileInput = document.getElementById('file-input');
+            const resultEl = document.getElementById('upload-result');
+            
+            if (!fileInput.files[0]) {
+                alert('Please select a file first');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<div class="loading"></div> Testing file upload...';
+            
+            try {
+                // Get presigned URL
+                const presignedResponse = await fetch(`${API_CONFIG.apiUrl}/api/v1/upload/presigned`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_name: file.name,
+                        content_type: file.type,
+                        user_id: API_CONFIG.userId
+                    })
+                });
+                
+                const presignedData = await presignedResponse.json();
+                
+                if (!presignedData.success) {
+                    throw new Error(presignedData.error || 'Failed to get upload URL');
+                }
+                
+                // Upload file
+                const uploadResponse = await fetch(presignedData.upload_url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': file.type },
+                    body: file
+                });
+                
+                if (uploadResponse.ok) {
+                    resultEl.className = 'test-result success';
+                    resultEl.innerHTML = `
+                        ✅ File uploaded successfully<br>
+                        File: ${file.name}<br>
+                        Size: ${(file.size / 1024).toFixed(1)} KB<br>
+                        Key: ${presignedData.file_key}
+                    `;
+                } else {
+                    throw new Error(`Upload failed: ${uploadResponse.status}`);
+                }
+            } catch (error) {
+                resultEl.className = 'test-result error';
+                resultEl.innerHTML = `❌ File upload failed: ${error.message}`;
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            input.value = '';
+            addMessage(message, 'user');
+            
+            // Show typing indicator
+            const typingId = addMessage('AI is thinking...', 'agent', true);
+            
+            try {
+                const response = await fetch(`${API_CONFIG.apiUrl}/api/v1/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: currentSessionId,
+                        user_id: API_CONFIG.userId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Remove typing indicator
+                document.getElementById(typingId).remove();
+                
+                if (response.ok && data.success) {
+                    addMessage(data.response, 'agent', false, {
+                        citations: data.citations,
+                        toolsUsed: data.tools_used,
+                        sessionId: data.session_id
+                    });
+                } else {
+                    addMessage(`Error: ${data.error || 'Failed to get response'}`, 'agent');
+                }
+            } catch (error) {
+                document.getElementById(typingId).remove();
+                addMessage(`Error: ${error.message}`, 'agent');
+            }
+        }
+
+        function sendTestMessage(message) {
+            document.getElementById('message-input').value = message;
+            sendMessage();
+        }
+
+        function addMessage(content, sender, isTyping = false, metadata = {}) {
+            const messagesEl = document.getElementById('chat-messages');
+            const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${sender}`;
+            messageEl.id = messageId;
+            
+            let html = `<div>${content}</div>`;
+            
+            if (!isTyping) {
+                html += `<div class="message-meta">${new Date().toLocaleTimeString()}`;
+                if (metadata.sessionId) {
+                    html += ` • Session: ${metadata.sessionId.substring(0, 8)}...`;
+                }
+                html += `</div>`;
+                
+                if (metadata.citations && metadata.citations.length > 0) {
+                    html += '<div class="citations"><strong>Sources:</strong>';
+                    metadata.citations.forEach(citation => {
+                        html += `<div class="citation">📄 ${citation.source}`;
+                        if (citation.confidence) {
+                            html += ` (${Math.round(citation.confidence * 100)}%)`;
+                        }
+                        html += `</div>`;
+                    });
+                    html += '</div>';
+                }
+                
+                if (metadata.toolsUsed && metadata.toolsUsed.length > 0) {
+                    html += '<div class="tools-used"><strong>Tools:</strong> ';
+                    metadata.toolsUsed.forEach(tool => {
+                        html += `<span class="tool">${tool.replace(/_/g, ' ')}</span>`;
+                    });
+                    html += '</div>';
+                }
+            }
+            
+            messageEl.innerHTML = html;
+            messagesEl.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            
+            return messageId;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // WebSocket functions
+        function connectWebSocket() {
+            if (websocket) {
+                websocket.close();
+            }
+            
+            const wsUrl = `${API_CONFIG.websocketUrl}?user_id=${API_CONFIG.userId}`;
+            websocket = new WebSocket(wsUrl);
+            
+            websocket.onopen = function() {
+                document.getElementById('ws-status').textContent = 'WebSocket: Connected';
+                addMessage('WebSocket connected! Real-time chat is now available.', 'agent');
+            };
+            
+            websocket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'final_response') {
+                    addMessage(data.content, 'agent', false, {
+                        citations: data.citations,
+                        toolsUsed: data.tools_used,
+                        sessionId: data.session_id
+                    });
+                } else if (data.type === 'error') {
+                    addMessage(`WebSocket Error: ${data.message}`, 'agent');
+                } else if (data.type === 'connection_established') {
+                    addMessage(data.message, 'agent');
+                }
+            };
+            
+            websocket.onclose = function() {
+                document.getElementById('ws-status').textContent = 'WebSocket: Disconnected';
+            };
+            
+            websocket.onerror = function(error) {
+                document.getElementById('ws-status').textContent = 'WebSocket: Error';
+                addMessage('WebSocket connection failed', 'agent');
+            };
+        }
+
+        function disconnectWebSocket() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
+        }
+    </script>
+</body>
+</html>

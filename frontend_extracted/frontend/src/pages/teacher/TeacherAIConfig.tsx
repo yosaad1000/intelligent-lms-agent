@@ -2,162 +2,144 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   CogIcon,
-  ChatBubbleLeftRightIcon,
+  SparklesIcon,
+  AdjustmentsHorizontalIcon,
   DocumentTextIcon,
   MicrophoneIcon,
-  AdjustmentsHorizontalIcon,
-  BeakerIcon,
-  ChartBarIcon,
+  ChatBubbleLeftRightIcon,
   CheckCircleIcon,
-  XCircleIcon,
-  PlayIcon,
-  PauseIcon
+  ExclamationTriangleIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline';
 
-interface AIAgentConfig {
-  id: string;
-  name: string;
-  type: 'chat' | 'quiz' | 'interview' | 'general';
-  personality: string;
-  responseStyle: 'formal' | 'casual' | 'encouraging' | 'strict';
-  difficulty: 'adaptive' | 'easy' | 'medium' | 'hard';
-  language: string;
-  customInstructions: string;
-  isActive: boolean;
-  performance: {
-    accuracy: number;
-    engagement: number;
-    satisfaction: number;
+interface AIConfig {
+  general: {
+    responseStyle: 'formal' | 'casual' | 'adaptive';
+    verbosity: 'concise' | 'detailed' | 'comprehensive';
+    language: string;
+    personalityTraits: string[];
   };
-}
-
-interface ABTest {
-  id: string;
-  name: string;
-  description: string;
-  configA: string;
-  configB: string;
-  status: 'running' | 'completed' | 'paused';
-  participants: number;
-  results?: {
-    winnerConfig: 'A' | 'B';
-    confidence: number;
-    metrics: { [key: string]: number };
+  chat: {
+    maxResponseLength: number;
+    contextWindow: number;
+    enableCitations: boolean;
+    allowFollowUps: boolean;
+    responseDelay: number;
+  };
+  quizGeneration: {
+    defaultQuestionCount: number;
+    difficultyDistribution: {
+      easy: number;
+      medium: number;
+      hard: number;
+    };
+    questionTypes: string[];
+    includeExplanations: boolean;
+  };
+  voiceInterviews: {
+    speechRate: 'slow' | 'normal' | 'fast';
+    pauseDuration: number;
+    enableTranscription: boolean;
+    feedbackDetail: 'basic' | 'detailed' | 'comprehensive';
+  };
+  contentAnalysis: {
+    analysisDepth: 'surface' | 'moderate' | 'deep';
+    enableSentiment: boolean;
+    extractKeywords: boolean;
+    generateSummaries: boolean;
   };
 }
 
 const TeacherAIConfig: React.FC = () => {
   const { user } = useAuth();
-  const [configs, setConfigs] = useState<AIAgentConfig[]>([]);
-  const [abTests, setABTests] = useState<ABTest[]>([]);
+  const [config, setConfig] = useState<AIConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'configs' | 'testing' | 'performance'>('configs');
-  const [selectedConfig, setSelectedConfig] = useState<AIAgentConfig | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [activeSection, setActiveSection] = useState<'general' | 'chat' | 'quiz' | 'voice' | 'content'>('general');
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    fetchAIConfigs();
+    fetchAIConfig();
   }, []);
 
-  const fetchAIConfigs = async () => {
+  const fetchAIConfig = async () => {
     try {
-      // Simulate API call with dummy data
+      // Simulate API call with default config
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      setConfigs([
-        {
-          id: '1',
-          name: 'Study Buddy Chat',
-          type: 'chat',
-          personality: 'Friendly and encouraging tutor who helps students understand concepts',
-          responseStyle: 'encouraging',
-          difficulty: 'adaptive',
-          language: 'English',
-          customInstructions: 'Always provide examples and ask follow-up questions to ensure understanding.',
-          isActive: true,
-          performance: { accuracy: 92, engagement: 88, satisfaction: 90 }
+      setConfig({
+        general: {
+          responseStyle: 'adaptive',
+          verbosity: 'detailed',
+          language: 'en',
+          personalityTraits: ['helpful', 'encouraging', 'patient']
         },
-        {
-          id: '2',
-          name: 'Quiz Generator',
-          type: 'quiz',
-          personality: 'Analytical and precise question creator',
-          responseStyle: 'formal',
-          difficulty: 'medium',
-          language: 'English',
-          customInstructions: 'Generate questions that test both knowledge and application.',
-          isActive: true,
-          performance: { accuracy: 95, engagement: 82, satisfaction: 87 }
+        chat: {
+          maxResponseLength: 500,
+          contextWindow: 10,
+          enableCitations: true,
+          allowFollowUps: true,
+          responseDelay: 1000
         },
-        {
-          id: '3',
-          name: 'Interview Assistant',
-          type: 'interview',
-          personality: 'Professional interviewer with constructive feedback',
-          responseStyle: 'formal',
-          difficulty: 'adaptive',
-          language: 'English',
-          customInstructions: 'Focus on communication skills and subject knowledge.',
-          isActive: false,
-          performance: { accuracy: 89, engagement: 75, satisfaction: 85 }
+        quizGeneration: {
+          defaultQuestionCount: 10,
+          difficultyDistribution: {
+            easy: 30,
+            medium: 50,
+            hard: 20
+          },
+          questionTypes: ['multiple-choice', 'true-false', 'short-answer'],
+          includeExplanations: true
+        },
+        voiceInterviews: {
+          speechRate: 'normal',
+          pauseDuration: 2000,
+          enableTranscription: true,
+          feedbackDetail: 'detailed'
+        },
+        contentAnalysis: {
+          analysisDepth: 'moderate',
+          enableSentiment: true,
+          extractKeywords: true,
+          generateSummaries: true
         }
-      ]);
-
-      setABTests([
-        {
-          id: '1',
-          name: 'Chat Response Style Test',
-          description: 'Testing formal vs casual response styles in AI chat',
-          configA: 'Formal responses',
-          configB: 'Casual responses',
-          status: 'running',
-          participants: 45,
-          results: undefined
-        },
-        {
-          id: '2',
-          name: 'Quiz Difficulty Adaptation',
-          description: 'Comparing adaptive vs fixed difficulty levels',
-          configA: 'Adaptive difficulty',
-          configB: 'Fixed medium difficulty',
-          status: 'completed',
-          participants: 78,
-          results: {
-            winnerConfig: 'A',
-            confidence: 87,
-            metrics: { engagement: 15, completion: 23, satisfaction: 12 }
-          }
-        }
-      ]);
+      });
     } catch (error) {
-      console.error('Error fetching AI configs:', error);
+      console.error('Error fetching AI config:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveConfig = (config: AIAgentConfig) => {
-    setConfigs(prev => prev.map(c => c.id === config.id ? config : c));
-    setIsEditing(false);
-    setSelectedConfig(null);
+  const handleConfigChange = (section: keyof AIConfig, field: string, value: any) => {
+    if (!config) return;
+    
+    setConfig(prev => ({
+      ...prev!,
+      [section]: {
+        ...prev![section],
+        [field]: value
+      }
+    }));
+    setHasChanges(true);
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'chat': return <ChatBubbleLeftRightIcon className="h-5 w-5" />;
-      case 'quiz': return <DocumentTextIcon className="h-5 w-5" />;
-      case 'interview': return <MicrophoneIcon className="h-5 w-5" />;
-      default: return <CogIcon className="h-5 w-5" />;
+  const handleSaveConfig = async () => {
+    setSaving(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setHasChanges(false);
+    } catch (error) {
+      console.error('Error saving config:', error);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'running': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'completed': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'paused': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-    }
+  const resetToDefaults = () => {
+    fetchAIConfig();
+    setHasChanges(false);
   };
 
   if (loading) {
@@ -169,26 +151,45 @@ const TeacherAIConfig: React.FC = () => {
         </div>
       </div>
     );
-  }  ret
-urn (
+  }
+
+  if (!config) return null;
+
+  return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 safe-area-padding">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="container-responsive">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-6 space-y-4 sm:space-y-0">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                AI Agent Configuration
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center">
+                <SparklesIcon className="h-7 w-7 mr-3 text-blue-500" />
+                AI Configuration
               </h1>
               <p className="text-gray-600 dark:text-gray-300 mt-1">
-                Customize and optimize your AI teaching assistants
+                Customize AI behavior and responses for your teaching style
               </p>
             </div>
             
             <div className="flex space-x-3">
-              <button className="btn-mobile bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center">
-                <BeakerIcon className="h-5 w-5 mr-2" />
-                New A/B Test
+              {hasChanges && (
+                <button
+                  onClick={resetToDefaults}
+                  className="btn-mobile bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                >
+                  Reset
+                </button>
+              )}
+              <button
+                onClick={handleSaveConfig}
+                disabled={!hasChanges || saving}
+                className={`btn-mobile ${
+                  hasChanges && !saving
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -196,391 +197,502 @@ urn (
       </div>
 
       <div className="container-responsive py-6">
-        {/* Tab Navigation */}
-        <div className="flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-          <button
-            onClick={() => setActiveTab('configs')}
-            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'configs'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
-            }`}
-          >
-            Agent Configs
-          </button>
-          <button
-            onClick={() => setActiveTab('testing')}
-            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'testing'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
-            }`}
-          >
-            A/B Testing
-          </button>
-          <button
-            onClick={() => setActiveTab('performance')}
-            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'performance'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
-            }`}
-          >
-            Performance
-          </button>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Navigation Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">Configuration Sections</h3>
+              <nav className="space-y-2">
+                <button
+                  onClick={() => setActiveSection('general')}
+                  className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
+                    activeSection === 'general'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <CogIcon className="h-4 w-4 mr-3" />
+                  General Settings
+                </button>
+                <button
+                  onClick={() => setActiveSection('chat')}
+                  className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
+                    activeSection === 'chat'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <ChatBubbleLeftRightIcon className="h-4 w-4 mr-3" />
+                  AI Chat
+                </button>
+                <button
+                  onClick={() => setActiveSection('quiz')}
+                  className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
+                    activeSection === 'quiz'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <DocumentTextIcon className="h-4 w-4 mr-3" />
+                  Quiz Generation
+                </button>
+                <button
+                  onClick={() => setActiveSection('voice')}
+                  className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
+                    activeSection === 'voice'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <MicrophoneIcon className="h-4 w-4 mr-3" />
+                  Voice Interviews
+                </button>
+                <button
+                  onClick={() => setActiveSection('content')}
+                  className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
+                    activeSection === 'content'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <AdjustmentsHorizontalIcon className="h-4 w-4 mr-3" />
+                  Content Analysis
+                </button>
+              </nav>
+            </div>
+          </div>
+
+          {/* Configuration Content */}
+          <div className="lg:col-span-3">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              {activeSection === 'general' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">General AI Settings</h3>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Response Style
+                      </label>
+                      <select
+                        value={config.general.responseStyle}
+                        onChange={(e) => handleConfigChange('general', 'responseStyle', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="formal">Formal - Professional and structured</option>
+                        <option value="casual">Casual - Friendly and conversational</option>
+                        <option value="adaptive">Adaptive - Matches student's communication style</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Response Verbosity
+                      </label>
+                      <select
+                        value={config.general.verbosity}
+                        onChange={(e) => handleConfigChange('general', 'verbosity', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="concise">Concise - Brief and to the point</option>
+                        <option value="detailed">Detailed - Comprehensive explanations</option>
+                        <option value="comprehensive">Comprehensive - Thorough with examples</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Primary Language
+                      </label>
+                      <select
+                        value={config.general.language}
+                        onChange={(e) => handleConfigChange('general', 'language', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="en">English</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                        <option value="de">German</option>
+                        <option value="zh">Chinese</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        AI Personality Traits
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {['helpful', 'encouraging', 'patient', 'analytical', 'creative', 'supportive'].map((trait) => (
+                          <label key={trait} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={config.general.personalityTraits.includes(trait)}
+                              onChange={(e) => {
+                                const traits = e.target.checked
+                                  ? [...config.general.personalityTraits, trait]
+                                  : config.general.personalityTraits.filter(t => t !== trait);
+                                handleConfigChange('general', 'personalityTraits', traits);
+                              }}
+                              className="rounded border-gray-300 dark:border-gray-600"
+                            />
+                            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 capitalize">{trait}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeSection === 'chat' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">AI Chat Configuration</h3>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Maximum Response Length (characters)
+                      </label>
+                      <input
+                        type="number"
+                        value={config.chat.maxResponseLength}
+                        onChange={(e) => handleConfigChange('chat', 'maxResponseLength', parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        min="100"
+                        max="2000"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Context Window (previous messages)
+                      </label>
+                      <input
+                        type="number"
+                        value={config.chat.contextWindow}
+                        onChange={(e) => handleConfigChange('chat', 'contextWindow', parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        min="1"
+                        max="50"
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={config.chat.enableCitations}
+                          onChange={(e) => handleConfigChange('chat', 'enableCitations', e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Enable source citations in responses
+                        </span>
+                      </label>
+
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={config.chat.allowFollowUps}
+                          onChange={(e) => handleConfigChange('chat', 'allowFollowUps', e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Allow follow-up questions
+                        </span>
+                      </label>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Response Delay (milliseconds)
+                      </label>
+                      <input
+                        type="number"
+                        value={config.chat.responseDelay}
+                        onChange={(e) => handleConfigChange('chat', 'responseDelay', parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        min="0"
+                        max="5000"
+                        step="100"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Simulates thinking time for more natural conversation
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeSection === 'quiz' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Quiz Generation Settings</h3>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Default Number of Questions
+                      </label>
+                      <input
+                        type="number"
+                        value={config.quizGeneration.defaultQuestionCount}
+                        onChange={(e) => handleConfigChange('quizGeneration', 'defaultQuestionCount', parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        min="1"
+                        max="50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                        Difficulty Distribution (%)
+                      </label>
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-4">
+                          <label className="w-16 text-sm text-gray-600 dark:text-gray-400">Easy:</label>
+                          <input
+                            type="number"
+                            value={config.quizGeneration.difficultyDistribution.easy}
+                            onChange={(e) => {
+                              const newDist = { ...config.quizGeneration.difficultyDistribution, easy: parseInt(e.target.value) };
+                              handleConfigChange('quizGeneration', 'difficultyDistribution', newDist);
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            min="0"
+                            max="100"
+                          />
+                          <span className="text-sm text-gray-500">%</span>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <label className="w-16 text-sm text-gray-600 dark:text-gray-400">Medium:</label>
+                          <input
+                            type="number"
+                            value={config.quizGeneration.difficultyDistribution.medium}
+                            onChange={(e) => {
+                              const newDist = { ...config.quizGeneration.difficultyDistribution, medium: parseInt(e.target.value) };
+                              handleConfigChange('quizGeneration', 'difficultyDistribution', newDist);
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            min="0"
+                            max="100"
+                          />
+                          <span className="text-sm text-gray-500">%</span>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <label className="w-16 text-sm text-gray-600 dark:text-gray-400">Hard:</label>
+                          <input
+                            type="number"
+                            value={config.quizGeneration.difficultyDistribution.hard}
+                            onChange={(e) => {
+                              const newDist = { ...config.quizGeneration.difficultyDistribution, hard: parseInt(e.target.value) };
+                              handleConfigChange('quizGeneration', 'difficultyDistribution', newDist);
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            min="0"
+                            max="100"
+                          />
+                          <span className="text-sm text-gray-500">%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Question Types
+                      </label>
+                      <div className="space-y-2">
+                        {['multiple-choice', 'true-false', 'short-answer', 'essay', 'fill-in-blank'].map((type) => (
+                          <label key={type} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={config.quizGeneration.questionTypes.includes(type)}
+                              onChange={(e) => {
+                                const types = e.target.checked
+                                  ? [...config.quizGeneration.questionTypes, type]
+                                  : config.quizGeneration.questionTypes.filter(t => t !== type);
+                                handleConfigChange('quizGeneration', 'questionTypes', types);
+                              }}
+                              className="rounded border-gray-300 dark:border-gray-600"
+                            />
+                            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 capitalize">
+                              {type.replace('-', ' ')}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={config.quizGeneration.includeExplanations}
+                          onChange={(e) => handleConfigChange('quizGeneration', 'includeExplanations', e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Include explanations for correct answers
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeSection === 'voice' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Voice Interview Settings</h3>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Speech Rate
+                      </label>
+                      <select
+                        value={config.voiceInterviews.speechRate}
+                        onChange={(e) => handleConfigChange('voiceInterviews', 'speechRate', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="slow">Slow - For language learners</option>
+                        <option value="normal">Normal - Standard pace</option>
+                        <option value="fast">Fast - For advanced students</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Pause Duration Between Questions (milliseconds)
+                      </label>
+                      <input
+                        type="number"
+                        value={config.voiceInterviews.pauseDuration}
+                        onChange={(e) => handleConfigChange('voiceInterviews', 'pauseDuration', parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        min="500"
+                        max="10000"
+                        step="500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Feedback Detail Level
+                      </label>
+                      <select
+                        value={config.voiceInterviews.feedbackDetail}
+                        onChange={(e) => handleConfigChange('voiceInterviews', 'feedbackDetail', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="basic">Basic - Simple pass/fail</option>
+                        <option value="detailed">Detailed - Specific improvements</option>
+                        <option value="comprehensive">Comprehensive - Full analysis</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={config.voiceInterviews.enableTranscription}
+                          onChange={(e) => handleConfigChange('voiceInterviews', 'enableTranscription', e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Enable automatic transcription
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeSection === 'content' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Content Analysis Configuration</h3>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Analysis Depth
+                      </label>
+                      <select
+                        value={config.contentAnalysis.analysisDepth}
+                        onChange={(e) => handleConfigChange('contentAnalysis', 'analysisDepth', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="surface">Surface - Basic content extraction</option>
+                        <option value="moderate">Moderate - Structured analysis</option>
+                        <option value="deep">Deep - Comprehensive understanding</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={config.contentAnalysis.enableSentiment}
+                          onChange={(e) => handleConfigChange('contentAnalysis', 'enableSentiment', e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Enable sentiment analysis
+                        </span>
+                      </label>
+
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={config.contentAnalysis.extractKeywords}
+                          onChange={(e) => handleConfigChange('contentAnalysis', 'extractKeywords', e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Extract keywords and key phrases
+                        </span>
+                      </label>
+
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={config.contentAnalysis.generateSummaries}
+                          onChange={(e) => handleConfigChange('contentAnalysis', 'generateSummaries', e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Generate automatic summaries
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Status Messages */}
+            {hasChanges && (
+              <div className="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                <div className="flex items-center">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-2" />
+                  <span className="text-sm text-yellow-800 dark:text-yellow-200">
+                    You have unsaved changes. Don't forget to save your configuration.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {saving && (
+              <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-center">
+                  <InformationCircleIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+                  <span className="text-sm text-blue-800 dark:text-blue-200">
+                    Saving configuration changes...
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* Agent Configurations Tab */}
-        {activeTab === 'configs' && (
-          <div className="space-y-6">
-            {configs.map((config) => (
-              <div key={config.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-4 sm:space-y-0">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      {getTypeIcon(config.type)}
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {config.name}
-                      </h3>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        config.isActive 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                      }`}>
-                        {config.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    
-                    <p className="text-gray-600 dark:text-gray-300 mb-4">{config.personality}</p>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Style:</span>
-                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100 capitalize">
-                          {config.responseStyle}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Difficulty:</span>
-                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100 capitalize">
-                          {config.difficulty}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Language:</span>
-                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                          {config.language}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Type:</span>
-                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100 capitalize">
-                          {config.type}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Performance Metrics */}
-                    <div className="mt-4 grid grid-cols-3 gap-4">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                          {config.performance.accuracy}%
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Accuracy</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                          {config.performance.engagement}%
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Engagement</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                          {config.performance.satisfaction}%
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Satisfaction</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => {
-                        setSelectedConfig(config);
-                        setIsEditing(true);
-                      }}
-                      className="btn-mobile bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 text-sm"
-                    >
-                      <AdjustmentsHorizontalIcon className="h-4 w-4 mr-1" />
-                      Configure
-                    </button>
-                    <button
-                      onClick={() => {
-                        const updatedConfig = { ...config, isActive: !config.isActive };
-                        handleSaveConfig(updatedConfig);
-                      }}
-                      className={`btn-mobile text-sm ${
-                        config.isActive
-                          ? 'bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300'
-                          : 'bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300'
-                      }`}
-                    >
-                      {config.isActive ? (
-                        <>
-                          <PauseIcon className="h-4 w-4 mr-1" />
-                          Deactivate
-                        </>
-                      ) : (
-                        <>
-                          <PlayIcon className="h-4 w-4 mr-1" />
-                          Activate
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* A/B Testing Tab */}
-        {activeTab === 'testing' && (
-          <div className="space-y-6">
-            {abTests.map((test) => (
-              <div key={test.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-4 sm:space-y-0">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {test.name}
-                      </h3>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(test.status)}`}>
-                        {test.status}
-                      </span>
-                    </div>
-                    
-                    <p className="text-gray-600 dark:text-gray-300 mb-4">{test.description}</p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-1">Config A</h4>
-                        <p className="text-sm text-blue-800 dark:text-blue-200">{test.configA}</p>
-                      </div>
-                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
-                        <h4 className="font-medium text-green-900 dark:text-green-100 mb-1">Config B</h4>
-                        <p className="text-sm text-green-800 dark:text-green-200">{test.configB}</p>
-                      </div>
-                    </div>
-
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      Participants: {test.participants}
-                    </div>
-
-                    {test.results && (
-                      <div className="mt-4 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                          Results: Config {test.results.winnerConfig} wins with {test.results.confidence}% confidence
-                        </h4>
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          {Object.entries(test.results.metrics).map(([metric, improvement]) => (
-                            <div key={metric}>
-                              <span className="text-gray-500 dark:text-gray-400 capitalize">{metric}:</span>
-                              <span className="ml-2 font-medium text-green-600 dark:text-green-400">
-                                +{improvement}%
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex space-x-2">
-                    {test.status === 'running' && (
-                      <button className="btn-mobile bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-700 dark:text-yellow-300 text-sm">
-                        <PauseIcon className="h-4 w-4 mr-1" />
-                        Pause
-                      </button>
-                    )}
-                    <button className="btn-mobile bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 text-sm">
-                      <ChartBarIcon className="h-4 w-4 mr-1" />
-                      View Details
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Performance Tab */}
-        {activeTab === 'performance' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Overall Performance
-              </h3>
-              <div className="space-y-4">
-                {configs.map((config) => (
-                  <div key={config.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      {getTypeIcon(config.type)}
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {config.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-4 text-sm">
-                      <div className="text-center">
-                        <div className="font-medium text-gray-900 dark:text-gray-100">
-                          {config.performance.accuracy}%
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Accuracy</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-medium text-gray-900 dark:text-gray-100">
-                          {config.performance.engagement}%
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Engagement</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-medium text-gray-900 dark:text-gray-100">
-                          {config.performance.satisfaction}%
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Satisfaction</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Optimization Suggestions
-              </h3>
-              <div className="space-y-4">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-                    💡 Chat Agent Improvement
-                  </h4>
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    Consider adding more interactive elements to increase engagement from 88% to 95%.
-                  </p>
-                </div>
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                  <h4 className="font-medium text-green-900 dark:text-green-100 mb-2">
-                    ✅ Quiz Generator Performing Well
-                  </h4>
-                  <p className="text-sm text-green-800 dark:text-green-200">
-                    High accuracy (95%) and good satisfaction. Consider replicating this configuration.
-                  </p>
-                </div>
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
-                  <h4 className="font-medium text-yellow-900 dark:text-yellow-100 mb-2">
-                    ⚠️ Interview Assistant Needs Attention
-                  </h4>
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    Lower engagement (75%). Try adjusting personality to be more encouraging.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* Configuration Modal */}
-      {isEditing && selectedConfig && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Configure {selectedConfig.name}
-              </h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Personality Description
-                  </label>
-                  <textarea
-                    value={selectedConfig.personality}
-                    onChange={(e) => setSelectedConfig({...selectedConfig, personality: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Response Style
-                    </label>
-                    <select
-                      value={selectedConfig.responseStyle}
-                      onChange={(e) => setSelectedConfig({...selectedConfig, responseStyle: e.target.value as any})}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                      <option value="formal">Formal</option>
-                      <option value="casual">Casual</option>
-                      <option value="encouraging">Encouraging</option>
-                      <option value="strict">Strict</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Difficulty Level
-                    </label>
-                    <select
-                      value={selectedConfig.difficulty}
-                      onChange={(e) => setSelectedConfig({...selectedConfig, difficulty: e.target.value as any})}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                      <option value="adaptive">Adaptive</option>
-                      <option value="easy">Easy</option>
-                      <option value="medium">Medium</option>
-                      <option value="hard">Hard</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Custom Instructions
-                  </label>
-                  <textarea
-                    value={selectedConfig.customInstructions}
-                    onChange={(e) => setSelectedConfig({...selectedConfig, customInstructions: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    rows={4}
-                    placeholder="Enter specific instructions for this AI agent..."
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => {
-                    setIsEditing(false);
-                    setSelectedConfig(null);
-                  }}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleSaveConfig(selectedConfig)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-                >
-                  Save Configuration
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

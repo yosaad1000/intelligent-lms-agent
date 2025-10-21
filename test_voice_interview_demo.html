@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Interview Practice - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .demo-section {
+            margin-bottom: 40px;
+            padding: 30px;
+            border: 2px solid #e5e7eb;
+            border-radius: 15px;
+            background: #f9fafb;
+        }
+
+        .demo-section h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .demo-section h2::before {
+            content: "🎤";
+            margin-right: 10px;
+            font-size: 1.8rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-idle { background-color: #6b7280; }
+        .status-active { background-color: #10b981; animation: pulse 2s infinite; }
+        .status-processing { background-color: #3b82f6; animation: pulse 1s infinite; }
+        .status-error { background-color: #ef4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-primary {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .audio-visualizer {
+            width: 100%;
+            height: 60px;
+            background: #1f2937;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .audio-bars {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            height: 40px;
+        }
+
+        .audio-bar {
+            width: 4px;
+            background: #10b981;
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+
+        .transcription-box {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 120px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .transcription-box.active {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .question-box {
+            background: linear-gradient(135deg, #ddd6fe 0%, #e0e7ff 100%);
+            border: 2px solid #8b5cf6;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .question-box h3 {
+            color: #5b21b6;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .question-text {
+            font-size: 1.1rem;
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        .timer {
+            font-family: 'Courier New', monospace;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .timer.warning {
+            color: #f59e0b;
+            animation: pulse 1s infinite;
+        }
+
+        .timer.danger {
+            color: #ef4444;
+            animation: pulse 0.5s infinite;
+        }
+
+        .analysis-box {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #f59e0b;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .score {
+            font-size: 3rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .score.excellent { color: #10b981; }
+        .score.good { color: #3b82f6; }
+        .score.fair { color: #f59e0b; }
+        .score.poor { color: #ef4444; }
+
+        .feedback-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feedback-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .feedback-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feedback-list li::before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 10px;
+            margin-top: 2px;
+        }
+
+        .settings {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .setting-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .setting-group select {
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: #4f46e5;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #1f2937;
+        }
+
+        .feature-description {
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        .demo-log {
+            background: #1f2937;
+            color: #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-timestamp {
+            color: #9ca3af;
+            margin-right: 10px;
+        }
+
+        .log-info { color: #60a5fa; }
+        .log-success { color: #34d399; }
+        .log-warning { color: #fbbf24; }
+        .log-error { color: #f87171; }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .btn {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 Voice Interview Practice</h1>
+            <p>AI-Powered Interview Training with Real-time Transcription</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Features Overview -->
+            <div class="demo-section">
+                <h2>Key Features</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🎙️</div>
+                        <div class="feature-title">WebRTC Audio Recording</div>
+                        <div class="feature-description">High-quality real-time audio capture with noise suppression and echo cancellation</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📝</div>
+                        <div class="feature-title">Live Transcription</div>
+                        <div class="feature-description">Real-time speech-to-text conversion with confidence scoring and interim results</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🤖</div>
+                        <div class="feature-title">AI Interviewer</div>
+                        <div class="feature-description">Intelligent question generation and natural response feedback using AWS Bedrock</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <div class="feature-title">Performance Analysis</div>
+                        <div class="feature-description">Comprehensive feedback with scores, strengths, and improvement recommendations</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interview Setup -->
+            <div class="demo-section">
+                <h2>Interview Setup</h2>
+                
+                <div class="settings">
+                    <div class="setting-group">
+                        <label for="subject">Interview Subject</label>
+                        <select id="subject">
+                            <option value="computer-science">Computer Science</option>
+                            <option value="data-science">Data Science</option>
+                            <option value="physics">Physics</option>
+                            <option value="mathematics">Mathematics</option>
+                            <option value="general">General Interview</option>
+                            <option value="behavioral">Behavioral Interview</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="difficulty">Difficulty Level</label>
+                        <select id="difficulty">
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate" selected>Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="connection-status">
+                    <span class="status-indicator status-idle" id="connectionStatus"></span>
+                    <span id="connectionText">Voice Service: Disconnected</span>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" id="startInterview">
+                        🎯 Start Voice Interview
+                    </button>
+                    <button class="btn btn-secondary" id="testAudio" disabled>
+                        🔊 Test Audio
+                    </button>
+                </div>
+            </div>
+
+            <!-- Active Interview -->
+            <div class="demo-section" id="interviewSection" style="display: none;">
+                <h2>Active Interview Session</h2>
+                
+                <div class="question-box">
+                    <h3>Current Question:</h3>
+                    <div class="question-text" id="currentQuestion">
+                        Waiting for question...
+                    </div>
+                </div>
+
+                <div class="timer" id="timer">03:00</div>
+
+                <div class="controls">
+                    <button class="btn btn-success" id="startRecording">
+                        🎤 Start Recording
+                    </button>
+                    <button class="btn btn-warning" id="pauseRecording" style="display: none;">
+                        ⏸️ Pause
+                    </button>
+                    <button class="btn btn-secondary" id="stopRecording" style="display: none;">
+                        ⏹️ Stop Recording
+                    </button>
+                    <button class="btn btn-primary" id="nextQuestion">
+                        ➡️ Next Question
+                    </button>
+                    <button class="btn btn-danger" id="endInterview">
+                        🏁 End Interview
+                    </button>
+                </div>
+
+                <div class="audio-visualizer" id="audioVisualizer">
+                    <div class="audio-bars" id="audioBars">
+                        <!-- Audio level bars will be generated here -->
+                    </div>
+                </div>
+
+                <div class="transcription-box" id="transcriptionBox">
+                    <strong>Live Transcription:</strong><br>
+                    <span id="transcriptionText">Start speaking to see your words appear here in real-time...</span>
+                </div>
+            </div>
+
+            <!-- Performance Analysis -->
+            <div class="demo-section" id="analysisSection" style="display: none;">
+                <h2>Performance Analysis</h2>
+                
+                <div class="analysis-box">
+                    <div class="score excellent" id="overallScore">85</div>
+                    <h3 style="text-align: center; margin-bottom: 20px;">Overall Performance</h3>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <div>
+                            <h4 style="color: #10b981; margin-bottom: 15px;">✅ Strengths</h4>
+                            <ul class="feedback-list" id="strengthsList">
+                                <li>Clear and articulate speech</li>
+                                <li>Good technical knowledge</li>
+                                <li>Structured responses</li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <h4 style="color: #f59e0b; margin-bottom: 15px;">📈 Areas for Improvement</h4>
+                            <ul class="feedback-list" id="improvementsList">
+                                <li>Provide more specific examples</li>
+                                <li>Reduce filler words</li>
+                                <li>Improve response timing</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" id="newInterview">
+                        🔄 Start New Interview
+                    </button>
+                    <button class="btn btn-secondary" id="viewHistory">
+                        📊 View History
+                    </button>
+                </div>
+            </div>
+
+            <!-- Demo Log -->
+            <div class="demo-section">
+                <h2>System Log</h2>
+                <div class="demo-log" id="demoLog">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[13:16:29]</span>
+                        <span class="log-info">Voice Interview Demo initialized</span>
+                    </div>
+                    <div class="log-entry">
+                        <span class="log-timestamp">[13:16:29]</span>
+                        <span class="log-success">WebRTC audio capabilities detected</span>
+                    </div>
+                    <div class="log-entry">
+                        <span class="log-timestamp">[13:16:29]</span>
+                        <span class="log-info">Text-to-Speech service ready</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo State Management
+        class VoiceInterviewDemo {
+            constructor() {
+                this.isRecording = false;
+                this.isPaused = false;
+                this.sessionActive = false;
+                this.timeRemaining = 180; // 3 minutes
+                this.timerInterval = null;
+                this.audioContext = null;
+                this.mediaStream = null;
+                this.mediaRecorder = null;
+                this.audioLevel = 0;
+                
+                this.initializeDemo();
+            }
+
+            initializeDemo() {
+                this.setupEventListeners();
+                this.createAudioBars();
+                this.logMessage('Voice Interview Demo ready', 'success');
+                this.checkAudioPermissions();
+            }
+
+            setupEventListeners() {
+                document.getElementById('startInterview').addEventListener('click', () => this.startInterview());
+                document.getElementById('testAudio').addEventListener('click', () => this.testAudio());
+                document.getElementById('startRecording').addEventListener('click', () => this.startRecording());
+                document.getElementById('pauseRecording').addEventListener('click', () => this.pauseRecording());
+                document.getElementById('stopRecording').addEventListener('click', () => this.stopRecording());
+                document.getElementById('nextQuestion').addEventListener('click', () => this.nextQuestion());
+                document.getElementById('endInterview').addEventListener('click', () => this.endInterview());
+                document.getElementById('newInterview').addEventListener('click', () => this.newInterview());
+                document.getElementById('viewHistory').addEventListener('click', () => this.viewHistory());
+            }
+
+            async checkAudioPermissions() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    this.updateConnectionStatus('connected', 'Voice Service: Ready');
+                    document.getElementById('testAudio').disabled = false;
+                    this.logMessage('Microphone access granted', 'success');
+                } catch (error) {
+                    this.updateConnectionStatus('error', 'Voice Service: Microphone access denied');
+                    this.logMessage('Microphone access denied: ' + error.message, 'error');
+                }
+            }
+
+            updateConnectionStatus(status, text) {
+                const indicator = document.getElementById('connectionStatus');
+                const statusText = document.getElementById('connectionText');
+                
+                indicator.className = `status-indicator status-${status}`;
+                statusText.textContent = text;
+            }
+
+            async startInterview() {
+                this.logMessage('Starting voice interview session...', 'info');
+                
+                const subject = document.getElementById('subject').value;
+                const difficulty = document.getElementById('difficulty').value;
+                
+                // Simulate interview start
+                this.sessionActive = true;
+                this.timeRemaining = 180;
+                
+                // Show interview section
+                document.getElementById('interviewSection').style.display = 'block';
+                document.getElementById('analysisSection').style.display = 'none';
+                
+                // Generate mock question
+                const questions = {
+                    'computer-science': [
+                        'Explain the difference between a stack and a queue, and provide use cases for each.',
+                        'How would you implement a binary search algorithm? Walk me through your approach.',
+                        'Describe the concept of Big O notation and why it\'s important in algorithm analysis.'
+                    ],
+                    'data-science': [
+                        'Explain the bias-variance tradeoff in machine learning models.',
+                        'How would you handle missing data in a dataset? Describe different approaches.',
+                        'What is the difference between supervised and unsupervised learning?'
+                    ],
+                    'physics': [
+                        'Explain Newton\'s laws of motion and provide real-world examples.',
+                        'Describe the concept of wave-particle duality in quantum mechanics.',
+                        'How does the greenhouse effect work from a physics perspective?'
+                    ]
+                };
+                
+                const subjectQuestions = questions[subject] || questions['computer-science'];
+                const randomQuestion = subjectQuestions[Math.floor(Math.random() * subjectQuestions.length)];
+                
+                document.getElementById('currentQuestion').textContent = randomQuestion;
+                
+                // Start timer
+                this.startTimer();
+                
+                // Speak the question
+                this.speakText(`Here's your first question: ${randomQuestion}`);
+                
+                this.logMessage(`Interview started - Subject: ${subject}, Difficulty: ${difficulty}`, 'success');
+                this.updateConnectionStatus('active', 'Voice Service: Interview Active');
+            }
+
+            async testAudio() {
+                this.logMessage('Testing audio recording...', 'info');
+                
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
+                    });
+                    
+                    // Test for 3 seconds
+                    this.setupAudioVisualization(stream);
+                    
+                    setTimeout(() => {
+                        stream.getTracks().forEach(track => track.stop());
+                        this.logMessage('Audio test completed successfully', 'success');
+                        this.resetAudioBars();
+                    }, 3000);
+                    
+                } catch (error) {
+                    this.logMessage('Audio test failed: ' + error.message, 'error');
+                }
+            }
+
+            async startRecording() {
+                if (!this.sessionActive) return;
+                
+                this.logMessage('Starting audio recording...', 'info');
+                
+                try {
+                    this.mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
+                    });
+                    
+                    this.setupAudioVisualization(this.mediaStream);
+                    
+                    this.mediaRecorder = new MediaRecorder(this.mediaStream);
+                    this.mediaRecorder.start(1000); // 1 second chunks
+                    
+                    this.isRecording = true;
+                    this.updateRecordingUI();
+                    
+                    // Simulate real-time transcription
+                    this.simulateTranscription();
+                    
+                    this.logMessage('Recording started', 'success');
+                    
+                } catch (error) {
+                    this.logMessage('Recording failed: ' + error.message, 'error');
+                }
+            }
+
+            pauseRecording() {
+                if (this.mediaRecorder && this.isRecording) {
+                    if (this.isPaused) {
+                        this.mediaRecorder.resume();
+                        this.isPaused = false;
+                        this.logMessage('Recording resumed', 'info');
+                    } else {
+                        this.mediaRecorder.pause();
+                        this.isPaused = true;
+                        this.logMessage('Recording paused', 'warning');
+                    }
+                    this.updateRecordingUI();
+                }
+            }
+
+            stopRecording() {
+                if (this.mediaRecorder && this.isRecording) {
+                    this.mediaRecorder.stop();
+                    this.isRecording = false;
+                    this.isPaused = false;
+                    
+                    if (this.mediaStream) {
+                        this.mediaStream.getTracks().forEach(track => track.stop());
+                    }
+                    
+                    this.updateRecordingUI();
+                    this.resetAudioBars();
+                    
+                    // Simulate processing
+                    this.simulateProcessing();
+                    
+                    this.logMessage('Recording stopped, processing response...', 'info');
+                }
+            }
+
+            nextQuestion() {
+                this.logMessage('Generating next question...', 'info');
+                
+                const questions = [
+                    'Can you elaborate on that concept with a specific example?',
+                    'How would you explain this to someone without technical background?',
+                    'What are the potential challenges or limitations of this approach?',
+                    'Can you compare this with alternative solutions or methods?'
+                ];
+                
+                const nextQ = questions[Math.floor(Math.random() * questions.length)];
+                document.getElementById('currentQuestion').textContent = nextQ;
+                
+                // Reset timer
+                this.timeRemaining = 180;
+                
+                // Clear transcription
+                document.getElementById('transcriptionText').textContent = 'Start speaking to see your words appear here in real-time...';
+                
+                this.speakText(nextQ);
+                this.logMessage('Next question presented', 'success');
+            }
+
+            endInterview() {
+                this.logMessage('Ending interview session...', 'info');
+                
+                this.sessionActive = false;
+                this.stopTimer();
+                
+                if (this.isRecording) {
+                    this.stopRecording();
+                }
+                
+                // Show analysis
+                document.getElementById('interviewSection').style.display = 'none';
+                document.getElementById('analysisSection').style.display = 'block';
+                
+                // Generate mock analysis
+                this.generateAnalysis();
+                
+                this.updateConnectionStatus('idle', 'Voice Service: Interview Completed');
+                this.logMessage('Interview completed, analysis generated', 'success');
+            }
+
+            newInterview() {
+                document.getElementById('interviewSection').style.display = 'none';
+                document.getElementById('analysisSection').style.display = 'none';
+                this.updateConnectionStatus('connected', 'Voice Service: Ready');
+                this.logMessage('Ready for new interview', 'info');
+            }
+
+            viewHistory() {
+                this.logMessage('Viewing interview history...', 'info');
+                alert('Interview History:\n\n1. Computer Science - Intermediate (Score: 85)\n2. Data Science - Advanced (Score: 78)\n3. Physics - Beginner (Score: 92)');
+            }
+
+            startTimer() {
+                this.timerInterval = setInterval(() => {
+                    this.timeRemaining--;
+                    this.updateTimerDisplay();
+                    
+                    if (this.timeRemaining <= 0) {
+                        this.stopTimer();
+                        this.nextQuestion();
+                    }
+                }, 1000);
+            }
+
+            stopTimer() {
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+            }
+
+            updateTimerDisplay() {
+                const minutes = Math.floor(this.timeRemaining / 60);
+                const seconds = this.timeRemaining % 60;
+                const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                const timer = document.getElementById('timer');
+                timer.textContent = display;
+                
+                timer.className = 'timer';
+                if (this.timeRemaining <= 30) {
+                    timer.className += ' danger';
+                } else if (this.timeRemaining <= 60) {
+                    timer.className += ' warning';
+                }
+            }
+
+            updateRecordingUI() {
+                const startBtn = document.getElementById('startRecording');
+                const pauseBtn = document.getElementById('pauseRecording');
+                const stopBtn = document.getElementById('stopRecording');
+                
+                if (this.isRecording) {
+                    startBtn.style.display = 'none';
+                    pauseBtn.style.display = 'inline-flex';
+                    stopBtn.style.display = 'inline-flex';
+                    
+                    pauseBtn.innerHTML = this.isPaused ? '▶️ Resume' : '⏸️ Pause';
+                    
+                    document.getElementById('transcriptionBox').classList.add('active');
+                } else {
+                    startBtn.style.display = 'inline-flex';
+                    pauseBtn.style.display = 'none';
+                    stopBtn.style.display = 'none';
+                    
+                    document.getElementById('transcriptionBox').classList.remove('active');
+                }
+            }
+
+            setupAudioVisualization(stream) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = this.audioContext.createAnalyser();
+                const source = this.audioContext.createMediaStreamSource(stream);
+                
+                source.connect(analyser);
+                analyser.fftSize = 256;
+                
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                const updateBars = () => {
+                    if (this.isRecording || this.audioContext.state === 'running') {
+                        analyser.getByteFrequencyData(dataArray);
+                        
+                        const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+                        this.audioLevel = average;
+                        
+                        this.updateAudioBars(average);
+                        requestAnimationFrame(updateBars);
+                    }
+                };
+                
+                updateBars();
+            }
+
+            createAudioBars() {
+                const container = document.getElementById('audioBars');
+                container.innerHTML = '';
+                
+                for (let i = 0; i < 20; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'audio-bar';
+                    bar.style.height = '5px';
+                    container.appendChild(bar);
+                }
+            }
+
+            updateAudioBars(level) {
+                const bars = document.querySelectorAll('.audio-bar');
+                const normalizedLevel = Math.min(level / 128, 1);
+                
+                bars.forEach((bar, index) => {
+                    const barLevel = Math.max(0, normalizedLevel - (index * 0.05));
+                    const height = Math.max(5, barLevel * 40);
+                    bar.style.height = `${height}px`;
+                });
+            }
+
+            resetAudioBars() {
+                const bars = document.querySelectorAll('.audio-bar');
+                bars.forEach(bar => {
+                    bar.style.height = '5px';
+                });
+            }
+
+            simulateTranscription() {
+                const phrases = [
+                    'Thank you for the question.',
+                    'Let me think about this for a moment.',
+                    'I believe the key concepts are...',
+                    'From my understanding...',
+                    'The main points I would highlight are...',
+                    'In my experience...',
+                    'To answer your question directly...',
+                    'This is an important topic because...',
+                    'I would approach this by...',
+                    'The benefits of this approach include...'
+                ];
+                
+                let currentText = '';
+                let phraseIndex = 0;
+                
+                const addPhrase = () => {
+                    if (this.isRecording && !this.isPaused && phraseIndex < phrases.length) {
+                        currentText += (currentText ? ' ' : '') + phrases[phraseIndex];
+                        document.getElementById('transcriptionText').textContent = currentText;
+                        phraseIndex++;
+                        
+                        setTimeout(addPhrase, 2000 + Math.random() * 3000);
+                    }
+                };
+                
+                setTimeout(addPhrase, 1000);
+            }
+
+            simulateProcessing() {
+                const transcriptionBox = document.getElementById('transcriptionBox');
+                const originalText = document.getElementById('transcriptionText').textContent;
+                
+                document.getElementById('transcriptionText').innerHTML = 
+                    originalText + '<br><br><em style="color: #3b82f6;">Processing response... Analyzing content and generating feedback...</em>';
+                
+                setTimeout(() => {
+                    document.getElementById('transcriptionText').innerHTML = 
+                        originalText + '<br><br><em style="color: #10b981;">✅ Response processed successfully! Analysis complete.</em>';
+                }, 2000);
+            }
+
+            generateAnalysis() {
+                const scores = [75, 80, 85, 90, 95];
+                const score = scores[Math.floor(Math.random() * scores.length)];
+                
+                document.getElementById('overallScore').textContent = score;
+                
+                const scoreElement = document.getElementById('overallScore');
+                scoreElement.className = 'score ';
+                if (score >= 90) scoreElement.className += 'excellent';
+                else if (score >= 80) scoreElement.className += 'good';
+                else if (score >= 70) scoreElement.className += 'fair';
+                else scoreElement.className += 'poor';
+                
+                // Update strengths and improvements
+                const strengths = [
+                    'Clear and articulate speech patterns',
+                    'Strong technical knowledge demonstrated',
+                    'Well-structured response organization',
+                    'Good use of specific examples',
+                    'Confident delivery and pacing'
+                ];
+                
+                const improvements = [
+                    'Consider providing more concrete examples',
+                    'Reduce use of filler words',
+                    'Improve response timing and pacing',
+                    'Elaborate on technical details',
+                    'Practice explaining complex concepts simply'
+                ];
+                
+                document.getElementById('strengthsList').innerHTML = 
+                    strengths.slice(0, 3).map(s => `<li>${s}</li>`).join('');
+                
+                document.getElementById('improvementsList').innerHTML = 
+                    improvements.slice(0, 3).map(i => `<li>${i}</li>`).join('');
+            }
+
+            speakText(text) {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1;
+                    utterance.volume = 0.8;
+                    
+                    speechSynthesis.speak(utterance);
+                    this.logMessage(`AI Interviewer: "${text.substring(0, 50)}..."`, 'info');
+                }
+            }
+
+            logMessage(message, type = 'info') {
+                const log = document.getElementById('demoLog');
+                const timestamp = new Date().toLocaleTimeString();
+                
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.innerHTML = `
+                    <span class="log-timestamp">[${timestamp}]</span>
+                    <span class="log-${type}">${message}</span>
+                `;
+                
+                log.appendChild(entry);
+                log.scrollTop = log.scrollHeight;
+            }
+        }
+
+        // Initialize demo when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new VoiceInterviewDemo();
+        });
+    </script>
+</body>
+</html>

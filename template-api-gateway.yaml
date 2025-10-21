@@ -1,0 +1,516 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'LMS API Gateway Integration for Bedrock Agent'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+  
+  BedrockAgentId:
+    Type: String
+    Default: ZTBBVSC6Y1
+    Description: Bedrock Agent ID
+  
+  BedrockAgentAliasId:
+    Type: String
+    Default: TSTALIASID
+    Description: Bedrock Agent Alias ID
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.9
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        BEDROCK_AGENT_ID: !Ref BedrockAgentId
+        BEDROCK_AGENT_ALIAS_ID: !Ref BedrockAgentAliasId
+
+Resources:
+  # API Gateway
+  LMSApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With'"
+        AllowOrigin: "'*'"
+        MaxAge: "'600'"
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With'"
+
+  # Bedrock Agent Proxy Function
+  BedrockAgentProxyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'lms-bedrock-agent-proxy-${Environment}'
+      CodeUri: src/api/
+      Handler: bedrock_agent_proxy.lambda_handler
+      Description: 'Proxy function for Bedrock Agent integration'
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeAgent
+                - bedrock-agent-runtime:InvokeAgent
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+                - s3:ListBucket
+                - s3:GeneratePresignedUrl
+              Resource: 
+                - !Sub '${DocumentsBucket}/*'
+                - !GetAtt DocumentsBucket.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource: 
+                - !GetAtt SessionsTable.Arn
+                - !Sub '${SessionsTable.Arn}/index/*'
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          BEDROCK_AGENT_ID: !Ref BedrockAgentId
+          BEDROCK_AGENT_ALIAS_ID: !Ref BedrockAgentAliasId
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
+          SESSIONS_TABLE: !Ref SessionsTable
+      Events:
+        ChatApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/chat
+            Method: post
+        InvokeApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/agent/invoke
+            Method: post
+        HealthCheck:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/health
+            Method: get
+        Capabilities:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/capabilities
+            Method: get
+        SessionHistory:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/session/history
+            Method: get
+        PresignedUpload:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/upload/presigned
+            Method: post
+        DocumentsList:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/documents
+            Method: get
+        OptionsChat:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/chat
+            Method: options
+        OptionsInvoke:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/agent/invoke
+            Method: options
+        OptionsHealth:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/health
+            Method: options
+        OptionsCapabilities:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/capabilities
+            Method: options
+        OptionsSessionHistory:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/session/history
+            Method: options
+        OptionsPresignedUpload:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/upload/presigned
+            Method: options
+        OptionsDocumentsList:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/documents
+            Method: options
+
+  # File Upload Function (for document processing)
+  FileUploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'lms-file-upload-${Environment}'
+      CodeUri: src/file_processing/
+      Handler: file_upload_handler.lambda_handler
+      Description: 'Handle file uploads and processing'
+      Timeout: 300
+      MemorySize: 1024
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+                - s3:GeneratePresignedUrl
+              Resource: 
+                - !Sub '${DocumentsBucket}/*'
+            - Effect: Allow
+              Action:
+                - textract:DetectDocumentText
+                - textract:AnalyzeDocument
+                - comprehend:DetectEntities
+                - comprehend:DetectKeyPhrases
+                - comprehend:DetectSentiment
+                - comprehend:DetectDominantLanguage
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock-agent:*
+              Resource: '*'
+      Events:
+        UploadApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/upload
+            Method: post
+        ProcessApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/documents/process
+            Method: post
+        ListDocuments:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/documents
+            Method: get
+
+  # Quiz Generation Function
+  QuizGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'lms-quiz-generator-${Environment}'
+      CodeUri: src/quiz_generator/
+      Handler: quiz_handler.lambda_handler
+      Description: 'Generate and manage quizzes'
+      Timeout: 120
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeAgent
+                - bedrock-agent-runtime:InvokeAgent
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource: 
+                - !GetAtt QuizzesTable.Arn
+                - !Sub '${QuizzesTable.Arn}/index/*'
+      Events:
+        GenerateQuiz:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/quiz/generate
+            Method: post
+        GetQuizzes:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/quizzes
+            Method: get
+        SubmitQuiz:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LMSApi
+            Path: /api/v1/quiz/submit
+            Method: post
+
+  # WebSocket API for real-time features
+  WebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub 'lms-websocket-${Environment}'
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: '$request.body.action'
+
+  WebSocketStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WebSocketApi
+      StageName: !Ref Environment
+      AutoDeploy: true
+
+  # WebSocket Lambda Functions
+  WebSocketConnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'lms-websocket-connect-${Environment}'
+      CodeUri: src/websocket/
+      Handler: websocket_handler.connect_handler
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:ManageConnections
+              Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+
+  WebSocketDisconnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'lms-websocket-disconnect-${Environment}'
+      CodeUri: src/websocket/
+      Handler: websocket_handler.disconnect_handler
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:ManageConnections
+              Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+
+  WebSocketMessageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'lms-websocket-message-${Environment}'
+      CodeUri: src/websocket/
+      Handler: websocket_handler.message_handler
+      Timeout: 60
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:ManageConnections
+              Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeAgent
+                - bedrock-agent-runtime:InvokeAgent
+              Resource: '*'
+
+  # WebSocket Routes
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $connect
+      Target: !Sub 'integrations/${ConnectIntegration}'
+
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $disconnect
+      Target: !Sub 'integrations/${DisconnectIntegration}'
+
+  MessageRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: sendMessage
+      Target: !Sub 'integrations/${MessageIntegration}'
+
+  # WebSocket Integrations
+  ConnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketConnectFunction.Arn}/invocations'
+
+  DisconnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketDisconnectFunction.Arn}/invocations'
+
+  MessageIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketMessageFunction.Arn}/invocations'
+
+  # Lambda Permissions for WebSocket
+  ConnectPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WebSocketConnectFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+
+  DisconnectPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WebSocketDisconnectFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+
+  MessagePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WebSocketMessageFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+
+  # S3 Bucket for Documents
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'lms-documents-${Environment}-${AWS::AccountId}'
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
+            AllowedOrigins: ['*']
+            MaxAge: 3600
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # DynamoDB Tables
+  QuizzesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'lms-quizzes-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: quiz_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: quiz_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: user-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  SessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'lms-sessions-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: user-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+Outputs:
+  ApiGatewayUrl:
+    Description: 'API Gateway endpoint URL'
+    Value: !Sub 'https://${LMSApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiUrl'
+
+  WebSocketUrl:
+    Description: 'WebSocket API endpoint URL'
+    Value: !Sub 'wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-WebSocketUrl'
+
+  DocumentsBucketName:
+    Description: 'S3 bucket for documents'
+    Value: !Ref DocumentsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-DocumentsBucket'
+
+  BedrockAgentProxyFunctionArn:
+    Description: 'Bedrock Agent Proxy Function ARN'
+    Value: !GetAtt BedrockAgentProxyFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BedrockAgentProxyArn'

@@ -1,0 +1,45 @@
+{
+  "total_tests": 6,
+  "passed_tests": 6,
+  "success_rate": 100.0,
+  "status": "PASS",
+  "test_results": [
+    {
+      "test": "Agent Connectivity",
+      "success": true,
+      "details": "Bedrock Agent is responsive",
+      "timestamp": "2025-10-21 16:29:34"
+    },
+    {
+      "test": "Quiz Generation",
+      "success": true,
+      "details": "Generated quiz with 2 questions",
+      "timestamp": "2025-10-21 16:29:37"
+    },
+    {
+      "test": "Quiz Parsing Logic",
+      "success": true,
+      "details": "\u2713 Has title; \u2713 Has questions; \u2713 Has 3 questions; \u2713 Valid question types; \u2713 Question 1 structure valid; \u2713 Question 2 structure valid; \u2713 Question 3 structure valid",
+      "timestamp": "2025-10-21 16:29:37"
+    },
+    {
+      "test": "Quiz Scoring Logic",
+      "success": true,
+      "details": "Earned 3.6/4 points (90%)",
+      "timestamp": "2025-10-21 16:29:37"
+    },
+    {
+      "test": "Quiz Session Management",
+      "success": true,
+      "details": "\u2713 Session active; \u2713 Valid question index; \u2713 Answer storage works; \u2713 Progress: 33.33333333333333%; \u2713 Time tracking works",
+      "timestamp": "2025-10-21 16:29:37"
+    },
+    {
+      "test": "Error Handling",
+      "success": true,
+      "details": "\u2713 JSON error handling works; \u2713 Missing field detection works; \u2713 Empty questions detection works; \u2713 Invalid question type detection works",
+      "timestamp": "2025-10-21 16:29:37"
+    }
+  ],
+  "timestamp": "2025-10-21 16:29:37"
+}

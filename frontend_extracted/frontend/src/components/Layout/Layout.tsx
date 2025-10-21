@@ -22,7 +22,7 @@ const Layout: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <Header />
-      <main className="w-full pb-safe">
+      <main id="main-content" className="w-full pb-safe" role="main">
         <div className="container-responsive py-4 sm:py-6">
           <Outlet />
         </div>

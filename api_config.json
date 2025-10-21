@@ -1,0 +1,13 @@
+{
+  "api_gateway_url": "https://7k21xsoz93.execute-api.us-east-1.amazonaws.com/dev",
+  "api_id": "7k21xsoz93",
+  "websocket_url": "wss://4olkavb3wa.execute-api.us-east-1.amazonaws.com/dev",
+  "websocket_api_id": "4olkavb3wa",
+  "lambda_function_arn": "arn:aws:lambda:us-east-1:145023137830:function:lms-bedrock-agent-proxy-dev",
+  "documents_bucket": "lms-documents-dev-145023137830",
+  "bedrock_agent_id": "ZTBBVSC6Y1",
+  "bedrock_agent_alias_id": "TSTALIASID",
+  "region": "us-east-1",
+  "environment": "dev",
+  "deployed_at": "2025-10-21T12:11:05.155896"
+}

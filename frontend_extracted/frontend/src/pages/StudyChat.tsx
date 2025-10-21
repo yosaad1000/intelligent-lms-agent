@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMockAuth } from '../contexts/MockAuthContext';
-import { agentService, AgentMessage } from '../services/bedrockAgentService';
+import { apiBedrockAgentService } from '../services/apiBedrockAgentService';
+import type { AgentMessage } from '../services/apiBedrockAgentService';
 import { mockDataService } from '../services/mockDataService';
 import { 
   PaperAirplaneIcon,
@@ -56,15 +57,15 @@ const StudyChat: React.FC = () => {
     const initializeChat = async () => {
       try {
         // Get agent capabilities
-        const capabilities = agentService.getAgentCapabilities();
+        const capabilities = await apiBedrockAgentService.getAgentCapabilities();
         setAgentCapabilities(capabilities);
         
         // Validate agent connection
-        const isConnected = await agentService.validateConfiguration();
+        const isConnected = await apiBedrockAgentService.validateConfiguration();
         setIsAgentConnected(isConnected);
         
         // Generate session ID
-        const sessionId = agentService.generateSessionId(user?.id);
+        const sessionId = apiBedrockAgentService.generateSessionId(user?.id);
         setCurrentSessionId(sessionId);
         
         // Load mock conversations
@@ -163,16 +164,14 @@ const StudyChat: React.FC = () => {
     try {
       // Get user context for better responses
       const userContext = {
-        role: user?.role || 'student',
+        role: 'student', // Default role for now
         userId: user?.id,
         documents: mockDataService.getDocuments(undefined, user?.id),
-        classes: user?.role === 'student' 
-          ? mockDataService.getStudentClasses(user.id)
-          : mockDataService.getClasses(user.id)
+        classes: mockDataService.getStudentClasses(user?.id || '')
       };
 
       // Send message to Bedrock Agent
-      const response = await agentService.sendMessage(
+      const response = await apiBedrockAgentService.sendMessage(
         messageToSend,
         currentSessionId,
         user?.id,
@@ -219,7 +218,7 @@ const StudyChat: React.FC = () => {
     setMessages([]);
     
     // Generate new session ID for new conversation
-    const newSessionId = agentService.generateSessionId(user?.id);
+    const newSessionId = apiBedrockAgentService.generateSessionId(user?.id);
     setCurrentSessionId(newSessionId);
   };
 

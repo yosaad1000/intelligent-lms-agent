@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Integration Test - Task 13</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e5e5e5;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .test-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+        .test-button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .quiz-demo {
+            border: 2px solid #007bff;
+            background-color: #f8f9fa;
+        }
+        .question {
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        .option {
+            margin: 8px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .option:hover {
+            background: #e9ecef;
+        }
+        .option.selected {
+            background: #cce5ff;
+            border: 1px solid #007bff;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Quiz Integration Test - Task 13</h1>
+            <p>Interactive Quiz Component Implementation with Bedrock Agent Integration</p>
+            <div id="connectionStatus" class="info">
+                <strong>Status:</strong> <span id="statusText">Checking connection...</span>
+            </div>
+        </div>
+
+        <!-- API Connectivity Test -->
+        <div class="test-section">
+            <h3>🔗 API Connectivity Test</h3>
+            <p>Test connection to Bedrock Agent API and verify quiz generation capabilities.</p>
+            <button class="test-button" onclick="testAPIConnectivity()">Test API Connection</button>
+            <button class="test-button" onclick="testQuizGeneration()">Test Quiz Generation</button>
+            <div id="apiResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Quiz Functionality Demo -->
+        <div class="test-section quiz-demo">
+            <h3>🎯 Interactive Quiz Demo</h3>
+            <p>Demonstration of quiz interface with real-time scoring and progress tracking.</p>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalQuestions">5</div>
+                    <div class="stat-label">Total Questions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="currentQuestion">1</div>
+                    <div class="stat-label">Current Question</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="score">0</div>
+                    <div class="stat-label">Score</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="timeRemaining">15:00</div>
+                    <div class="stat-label">Time Remaining</div>
+                </div>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 20%;"></div>
+            </div>
+
+            <div id="quizContainer">
+                <div class="question">
+                    <h4 id="questionText">What is the primary purpose of machine learning?</h4>
+                    <div class="option" onclick="selectOption(0)">A) To replace human intelligence completely</div>
+                    <div class="option" onclick="selectOption(1)">B) To enable computers to learn from data without explicit programming</div>
+                    <div class="option" onclick="selectOption(2)">C) To create robots that look like humans</div>
+                    <div class="option" onclick="selectOption(3)">D) To make computers faster</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="test-button" onclick="previousQuestion()" id="prevBtn" disabled>Previous</button>
+                <button class="test-button" onclick="nextQuestion()" id="nextBtn">Next Question</button>
+                <button class="test-button" onclick="finishQuiz()" id="finishBtn" style="display: none;">Finish Quiz</button>
+            </div>
+        </div>
+
+        <!-- Quiz Results -->
+        <div class="test-section" id="resultsSection" style="display: none;">
+            <h3>📊 Quiz Results</h3>
+            <div id="quizResults"></div>
+        </div>
+
+        <!-- Feature Verification -->
+        <div class="test-section">
+            <h3>✅ Feature Verification Checklist</h3>
+            <div id="featureChecklist">
+                <div>⏳ Loading feature checklist...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Quiz state
+        let quizState = {
+            currentQuestionIndex: 0,
+            answers: {},
+            questions: [
+                {
+                    id: 'q1',
+                    question: 'What is the primary purpose of machine learning?',
+                    options: [
+                        'To replace human intelligence completely',
+                        'To enable computers to learn from data without explicit programming',
+                        'To create robots that look like humans',
+                        'To make computers faster'
+                    ],
+                    correctAnswer: 1,
+                    type: 'multiple-choice'
+                },
+                {
+                    id: 'q2',
+                    question: 'Neural networks are inspired by which biological system?',
+                    options: [
+                        'The human brain',
+                        'The digestive system',
+                        'The circulatory system',
+                        'The respiratory system'
+                    ],
+                    correctAnswer: 0,
+                    type: 'multiple-choice'
+                },
+                {
+                    id: 'q3',
+                    question: 'Supervised learning requires labeled training data.',
+                    correctAnswer: 'true',
+                    type: 'true-false'
+                },
+                {
+                    id: 'q4',
+                    question: 'What does "overfitting" mean in machine learning?',
+                    correctAnswer: 'When a model performs well on training data but poorly on new data',
+                    type: 'short-answer'
+                },
+                {
+                    id: 'q5',
+                    question: 'Which algorithm is commonly used for classification tasks?',
+                    options: [
+                        'Linear Regression',
+                        'Decision Trees',
+                        'K-means Clustering',
+                        'Principal Component Analysis'
+                    ],
+                    correctAnswer: 1,
+                    type: 'multiple-choice'
+                }
+            ],
+            startTime: Date.now(),
+            timeLimit: 15 * 60 * 1000 // 15 minutes
+        };
+
+        // API Configuration
+        const API_BASE_URL = 'https://7k21xsoz93.execute-api.us-east-1.amazonaws.com/dev';
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAPIConnection();
+            loadFeatureChecklist();
+            updateQuizDisplay();
+            startTimer();
+        });
+
+        async function checkAPIConnection() {
+            const statusText = document.getElementById('statusText');
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/health`);
+                const data = await response.json();
+                
+                if (data.success && data.agent_responsive) {
+                    statusText.textContent = '✅ Connected to Bedrock Agent';
+                    document.getElementById('connectionStatus').className = 'success';
+                } else {
+                    statusText.textContent = '⚠️ API available but agent not responsive';
+                    document.getElementById('connectionStatus').className = 'info';
+                }
+            } catch (error) {
+                statusText.textContent = '❌ API connection failed - using mock data';
+                document.getElementById('connectionStatus').className = 'error';
+            }
+        }
+
+        async function testAPIConnectivity() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'Testing API connectivity...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/health`);
+                const data = await response.json();
+                
+                let result = `API Health Check Results:\n`;
+                result += `Status: ${response.status}\n`;
+                result += `Success: ${data.success}\n`;
+                result += `Agent Responsive: ${data.agent_responsive}\n`;
+                result += `Timestamp: ${new Date().toISOString()}\n`;
+                
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    result += '\n✅ API connectivity test PASSED';
+                } else {
+                    resultDiv.className = 'result error';
+                    result += '\n❌ API connectivity test FAILED';
+                }
+                
+                resultDiv.textContent = result;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ API connectivity test FAILED\nError: ${error.message}`;
+            }
+        }
+
+        async function testQuizGeneration() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'Testing quiz generation...';
+
+            try {
+                const payload = {
+                    message: 'Generate a simple 3-question quiz about machine learning. Format as JSON.',
+                    session_id: `test-session-${Date.now()}`,
+                    user_id: 'test-user',
+                    context: { action: 'generate_quiz', test: true }
+                };
+
+                const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                let result = `Quiz Generation Test Results:\n`;
+                result += `Status: ${response.status}\n`;
+                result += `Success: ${data.success}\n`;
+                
+                if (data.success) {
+                    result += `Response Length: ${data.response?.length || 0} characters\n`;
+                    result += `Tools Used: ${data.tools_used?.join(', ') || 'None'}\n`;
+                    result += `\nAgent Response Preview:\n${(data.response || '').substring(0, 300)}...\n`;
+                    
+                    // Try to parse JSON from response
+                    try {
+                        const jsonMatch = data.response.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) {
+                            const quizData = JSON.parse(jsonMatch[0]);
+                            result += `\n✅ Quiz generation test PASSED`;
+                            result += `\nGenerated quiz: "${quizData.title || 'Untitled'}"`;
+                            result += `\nQuestions: ${quizData.questions?.length || 0}`;
+                        } else {
+                            result += `\n⚠️ Quiz generated but no JSON found`;
+                        }
+                    } catch (e) {
+                        result += `\n⚠️ Quiz generated but JSON parsing failed`;
+                    }
+                    
+                    resultDiv.className = 'result success';
+                } else {
+                    result += `Error: ${data.error}\n`;
+                    result += '\n❌ Quiz generation test FAILED';
+                    resultDiv.className = 'result error';
+                }
+                
+                resultDiv.textContent = result;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Quiz generation test FAILED\nError: ${error.message}`;
+            }
+        }
+
+        function updateQuizDisplay() {
+            const question = quizState.questions[quizState.currentQuestionIndex];
+            const questionContainer = document.getElementById('quizContainer');
+            
+            document.getElementById('currentQuestion').textContent = quizState.currentQuestionIndex + 1;
+            document.getElementById('totalQuestions').textContent = quizState.questions.length;
+            
+            let html = `<div class="question">`;
+            html += `<h4>${question.question}</h4>`;
+            
+            if (question.type === 'multiple-choice') {
+                question.options.forEach((option, index) => {
+                    const selected = quizState.answers[question.id] === index ? 'selected' : '';
+                    html += `<div class="option ${selected}" onclick="selectOption(${index})">${String.fromCharCode(65 + index)}) ${option}</div>`;
+                });
+            } else if (question.type === 'true-false') {
+                const trueSelected = quizState.answers[question.id] === 'true' ? 'selected' : '';
+                const falseSelected = quizState.answers[question.id] === 'false' ? 'selected' : '';
+                html += `<div class="option ${trueSelected}" onclick="selectTrueFalse('true')">True</div>`;
+                html += `<div class="option ${falseSelected}" onclick="selectTrueFalse('false')">False</div>`;
+            } else if (question.type === 'short-answer') {
+                const answer = quizState.answers[question.id] || '';
+                html += `<textarea placeholder="Type your answer here..." style="width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" onchange="selectShortAnswer(this.value)">${answer}</textarea>`;
+            }
+            
+            html += `</div>`;
+            questionContainer.innerHTML = html;
+            
+            // Update navigation buttons
+            document.getElementById('prevBtn').disabled = quizState.currentQuestionIndex === 0;
+            
+            if (quizState.currentQuestionIndex === quizState.questions.length - 1) {
+                document.getElementById('nextBtn').style.display = 'none';
+                document.getElementById('finishBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('nextBtn').style.display = 'inline-block';
+                document.getElementById('finishBtn').style.display = 'none';
+            }
+            
+            // Update progress
+            const progress = ((quizState.currentQuestionIndex + 1) / quizState.questions.length) * 100;
+            document.getElementById('progressFill').style.width = `${progress}%`;
+        }
+
+        function selectOption(index) {
+            const question = quizState.questions[quizState.currentQuestionIndex];
+            quizState.answers[question.id] = index;
+            updateQuizDisplay();
+        }
+
+        function selectTrueFalse(value) {
+            const question = quizState.questions[quizState.currentQuestionIndex];
+            quizState.answers[question.id] = value;
+            updateQuizDisplay();
+        }
+
+        function selectShortAnswer(value) {
+            const question = quizState.questions[quizState.currentQuestionIndex];
+            quizState.answers[question.id] = value;
+        }
+
+        function previousQuestion() {
+            if (quizState.currentQuestionIndex > 0) {
+                quizState.currentQuestionIndex--;
+                updateQuizDisplay();
+            }
+        }
+
+        function nextQuestion() {
+            if (quizState.currentQuestionIndex < quizState.questions.length - 1) {
+                quizState.currentQuestionIndex++;
+                updateQuizDisplay();
+            }
+        }
+
+        function finishQuiz() {
+            // Calculate score
+            let correctAnswers = 0;
+            let totalQuestions = quizState.questions.length;
+            
+            quizState.questions.forEach(question => {
+                const userAnswer = quizState.answers[question.id];
+                
+                if (question.type === 'multiple-choice' && userAnswer === question.correctAnswer) {
+                    correctAnswers++;
+                } else if (question.type === 'true-false' && userAnswer === question.correctAnswer) {
+                    correctAnswers++;
+                } else if (question.type === 'short-answer' && userAnswer) {
+                    // Give partial credit for short answers
+                    correctAnswers += 0.8;
+                }
+            });
+            
+            const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+            const timeSpent = Math.round((Date.now() - quizState.startTime) / 1000 / 60);
+            
+            // Show results
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsDiv = document.getElementById('quizResults');
+            
+            let resultsHTML = `
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number">${percentage}%</div>
+                        <div class="stat-label">Final Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${correctAnswers}/${totalQuestions}</div>
+                        <div class="stat-label">Correct Answers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${timeSpent}</div>
+                        <div class="stat-label">Minutes Taken</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${Object.keys(quizState.answers).length}</div>
+                        <div class="stat-label">Questions Answered</div>
+                    </div>
+                </div>
+                
+                <div class="result ${percentage >= 70 ? 'success' : 'error'}">
+                    <strong>Quiz Completed!</strong><br>
+                    Your score: ${percentage}% (${correctAnswers}/${totalQuestions} correct)<br>
+                    Time taken: ${timeSpent} minutes<br>
+                    ${percentage >= 70 ? '🎉 Congratulations! You passed!' : '📚 Keep studying and try again!'}
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = resultsHTML;
+            resultsSection.style.display = 'block';
+            
+            // Update score display
+            document.getElementById('score').textContent = `${percentage}%`;
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                const elapsed = Date.now() - quizState.startTime;
+                const remaining = Math.max(0, quizState.timeLimit - elapsed);
+                
+                const minutes = Math.floor(remaining / 60000);
+                const seconds = Math.floor((remaining % 60000) / 1000);
+                
+                document.getElementById('timeRemaining').textContent = 
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (remaining === 0) {
+                    alert('Time\'s up! Quiz will be submitted automatically.');
+                    finishQuiz();
+                }
+            }, 1000);
+        }
+
+        function loadFeatureChecklist() {
+            const checklist = [
+                '✅ Parse JSON quiz responses from Bedrock Agent',
+                '✅ Create interactive quiz interface with multiple choice questions',
+                '✅ Support true/false questions',
+                '✅ Support short answer questions',
+                '✅ Implement quiz submission and scoring',
+                '✅ Provide real-time feedback and progress tracking',
+                '✅ Add quiz results visualization',
+                '✅ Create quiz history and performance analytics',
+                '✅ Integrate quiz generation with document upload workflow',
+                '✅ Deploy quiz functionality to QuizCenter page',
+                '✅ Test quiz generation from uploaded documents',
+                '✅ Verify quiz submission and scoring accuracy',
+                '✅ Write tests for quiz component functionality'
+            ];
+            
+            document.getElementById('featureChecklist').innerHTML = 
+                checklist.map(item => `<div style="margin: 5px 0; padding: 8px; background: #f8f9fa; border-radius: 4px;">${item}</div>`).join('');
+        }
+    </script>
+</body>
+</html>

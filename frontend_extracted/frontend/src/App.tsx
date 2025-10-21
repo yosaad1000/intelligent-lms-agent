@@ -8,7 +8,9 @@ import { ToastProvider } from './contexts/ToastContext';
 import { ViewProvider } from './contexts/ViewContext';
 import Layout from './components/Layout/Layout';
 import AppErrorBoundary from './components/AppErrorBoundary';
+import GlobalErrorBoundary from './components/ui/GlobalErrorBoundary';
 import OfflineDetector from './components/OfflineDetector';
+import { AccessibilityProvider, SkipToMain } from './components/ui/AccessibilityProvider';
 
 // Core pages that definitely exist
 import DevLogin from './pages/DevLogin';
@@ -20,6 +22,15 @@ import QuizCenter from './pages/QuizCenter';
 import LearningAnalytics from './pages/LearningAnalytics';
 import InterviewPractice from './pages/InterviewPractice';
 import Profile from './pages/Profile';
+
+// Teacher pages
+import TeacherClasses from './pages/teacher/TeacherClasses';
+import TeacherContent from './pages/teacher/TeacherContent';
+import TeacherAssessments from './pages/teacher/TeacherAssessments';
+import TeacherProgress from './pages/teacher/TeacherProgress';
+import TeacherInterviews from './pages/teacher/TeacherInterviews';
+import TeacherAnalytics from './pages/teacher/TeacherAnalytics';
+import TeacherAIConfig from './pages/teacher/TeacherAIConfig';
 
 import './App.css';
 
@@ -110,6 +121,15 @@ const AppRoutes: React.FC = () => {
         {/* User Settings */}
         <Route path="profile" element={<Profile />} />
         
+        {/* Teacher Routes */}
+        <Route path="teacher/classes" element={<TeacherClasses />} />
+        <Route path="teacher/content" element={<TeacherContent />} />
+        <Route path="teacher/assessments" element={<TeacherAssessments />} />
+        <Route path="teacher/progress" element={<TeacherProgress />} />
+        <Route path="teacher/interviews" element={<TeacherInterviews />} />
+        <Route path="teacher/analytics" element={<TeacherAnalytics />} />
+        <Route path="teacher/ai-config" element={<TeacherAIConfig />} />
+        
         <Route path="" element={<Navigate to="/dashboard" />} />
       </Route>
     </Routes>
@@ -121,22 +141,25 @@ function App() {
   const AuthProviderComponent = isDev ? MockAuthProvider : AuthProvider;
   
   return (
-    <AppErrorBoundary>
-      <ThemeProvider>
-        <AuthProviderComponent>
-          <NotificationProvider>
-            <ToastProvider>
-              <ViewProvider>
-                <Router>
-                  <OfflineDetector />
-                  <AppRoutes />
-                </Router>
-              </ViewProvider>
-            </ToastProvider>
-          </NotificationProvider>
-        </AuthProviderComponent>
-      </ThemeProvider>
-    </AppErrorBoundary>
+    <GlobalErrorBoundary>
+      <AccessibilityProvider>
+        <ThemeProvider>
+          <AuthProviderComponent>
+            <NotificationProvider>
+              <ToastProvider>
+                <ViewProvider>
+                  <Router>
+                    <SkipToMain />
+                    <OfflineDetector />
+                    <AppRoutes />
+                  </Router>
+                </ViewProvider>
+              </ToastProvider>
+            </NotificationProvider>
+          </AuthProviderComponent>
+        </ThemeProvider>
+      </AccessibilityProvider>
+    </GlobalErrorBoundary>
   );
 }
 

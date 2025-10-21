@@ -416,4 +416,6 @@ What would you like to work on today? Feel free to upload documents or ask me an
 // Export the appropriate service based on environment
 export const agentService = import.meta.env.VITE_USE_MOCK_AGENT === 'true' 
   ? new MockBedrockAgentService() 
-  : bedrockAgentService;
+  : (import.meta.env.VITE_USE_API_PROXY === 'true' 
+      ? import('./apiBedrockAgentService').then(module => module.apiBedrockAgentService)
+      : bedrockAgentService);
