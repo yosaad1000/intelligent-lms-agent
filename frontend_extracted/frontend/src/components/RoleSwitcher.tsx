@@ -1,9 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useMockAuth } from '../contexts/MockAuthContext';
 import { ChevronDownIcon, UserIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 
+// Conditional hook usage based on environment
+const useAuthHook = () => {
+  const isDev = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
+  if (isDev) {
+    return useMockAuth();
+  } else {
+    return useAuth();
+  }
+};
+
 const RoleSwitcher: React.FC = () => {
-  const { currentRole, userRoles, switchRole, addRole } = useAuth();
+  const { currentRole, userRoles, switchRole, addRole } = useAuthHook();
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

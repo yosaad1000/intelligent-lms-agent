@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useMockAuth } from '../../contexts/MockAuthContext';
 import RoleSwitcher from '../RoleSwitcher';
 import ThemeToggle from '../ThemeToggle';
 import { NotificationBell } from '../notifications';
@@ -12,8 +13,18 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 
+// Conditional hook usage based on environment
+const useAuthHook = () => {
+  const isDev = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
+  if (isDev) {
+    return useMockAuth();
+  } else {
+    return useAuth();
+  }
+};
+
 const Header: React.FC = () => {
-  const { user, signOut, currentRole } = useAuth();
+  const { user, signOut, currentRole } = useAuthHook();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);

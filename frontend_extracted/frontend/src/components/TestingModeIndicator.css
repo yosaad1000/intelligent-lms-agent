@@ -1,0 +1,682 @@
+/* Testing Mode Indicator Styles */
+.testing-mode-indicator {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Status Bar */
+.status-bar {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.status-bar.green {
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
+}
+
+.status-bar.yellow {
+  background-color: #fff3cd;
+  border-color: #ffeaa7;
+  color: #856404;
+}
+
+.status-bar.red {
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+.status-bar.gray {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+}
+
+.status-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+}
+
+.status-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.status-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.status-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.status-message {
+  font-size: 12px;
+  opacity: 0.8;
+  word-wrap: break-word;
+}
+
+.status-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.refresh-btn,
+.details-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.refresh-btn:hover,
+.details-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Hybrid Mode Warning */
+.hybrid-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  color: #856404;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.warning-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.warning-text {
+  flex: 1;
+}
+
+/* Configuration Details */
+.config-details {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.detail-section {
+  margin-bottom: 16px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.detail-section h5 {
+  margin: 8px 0 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.detail-item.valid {
+  border-color: #c3e6cb;
+  background-color: #d4edda;
+}
+
+.detail-item.invalid,
+.detail-item.failed {
+  border-color: #f5c6cb;
+  background-color: #f8d7da;
+}
+
+.detail-item.missing,
+.detail-item.untested {
+  border-color: #ffeaa7;
+  background-color: #fff3cd;
+}
+
+.detail-item.connected {
+  border-color: #c3e6cb;
+  background-color: #d4edda;
+}
+
+.detail-label {
+  font-weight: 500;
+  color: #495057;
+  font-size: 12px;
+}
+
+.detail-value {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 11px;
+  color: #6c757d;
+  text-align: right;
+  word-break: break-all;
+}
+
+/* Error and Warning Lists */
+.error-list,
+.warning-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.error-item,
+.warning-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.error-item:last-child,
+.warning-item:last-child {
+  border-bottom: none;
+}
+
+.error-icon,
+.warning-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.error-text,
+.warning-text {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.errors {
+  border-left: 3px solid #dc3545;
+  padding-left: 12px;
+}
+
+.warnings {
+  border-left: 3px solid #ffc107;
+  padding-left: 12px;
+}
+
+/* Setup Instructions */
+.setup-instructions {
+  border-left: 3px solid #007bff;
+  padding-left: 12px;
+}
+
+.instruction-list {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.instruction-item {
+  margin-bottom: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Diagnostic Panel */
+.diagnostic-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 800px;
+  max-height: 80vh;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.diagnostic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.diagnostic-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.diagnostic-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.copy-btn,
+.close-btn {
+  background: none;
+  border: 1px solid #dee2e6;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover,
+.close-btn:hover {
+  background-color: #e9ecef;
+}
+
+.close-btn {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.close-btn:hover {
+  background-color: #f8d7da;
+}
+
+.diagnostic-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.diagnostic-section {
+  margin-bottom: 24px;
+}
+
+.diagnostic-section:last-child {
+  margin-bottom: 0;
+}
+
+.diagnostic-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 4px;
+}
+
+.diagnostic-data {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Error Statistics */
+.error-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+}
+
+.stat-label {
+  font-weight: 500;
+  font-size: 12px;
+  color: #495057;
+}
+
+.stat-value {
+  font-weight: 600;
+  font-size: 14px;
+  color: #007bff;
+}
+
+.category-stats {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.category-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.category-item:last-child {
+  border-bottom: none;
+}
+
+.category-label {
+  font-size: 12px;
+  color: #495057;
+  text-transform: capitalize;
+}
+
+.category-count {
+  font-weight: 600;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+/* Recent Errors */
+.recent-errors {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.recent-error {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.recent-error:last-child {
+  margin-bottom: 0;
+}
+
+.error-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.error-code {
+  background-color: #dc3545;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.error-category {
+  background-color: #6c757d;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.error-time {
+  font-size: 10px;
+  color: #6c757d;
+  margin-left: auto;
+}
+
+.error-message {
+  font-size: 12px;
+  color: #495057;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.error-context {
+  background-color: #e9ecef;
+  border-radius: 3px;
+  padding: 8px;
+}
+
+.error-context pre {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #495057;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .diagnostic-panel {
+    width: 95vw;
+    max-height: 90vh;
+  }
+  
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .error-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .status-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .status-actions {
+    align-self: flex-end;
+  }
+}
+
+/* Compact Status Indicator */
+.compact-status-indicator {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 12px;
+}
+
+.compact-status-bar {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.compact-status-bar.green {
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
+}
+
+.compact-status-bar.yellow {
+  background-color: #fff3cd;
+  border-color: #ffeaa7;
+  color: #856404;
+}
+
+.compact-status-bar.red {
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+.compact-status-bar.gray {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+}
+
+.compact-status-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.compact-status-mode {
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.compact-status-text {
+  font-size: 10px;
+  opacity: 0.8;
+  line-height: 1.2;
+}
+
+.compact-refresh-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 2px;
+  font-size: 10px;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.compact-refresh-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.compact-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.compact-hybrid-badge {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  text-align: center;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .config-details {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+  
+  .detail-item {
+    background-color: #4a5568;
+    border-color: #718096;
+    color: #e2e8f0;
+  }
+  
+  .diagnostic-panel {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+  
+  .diagnostic-header {
+    background-color: #4a5568;
+    border-color: #718096;
+  }
+  
+  .diagnostic-data {
+    background-color: #4a5568;
+    border-color: #718096;
+    color: #e2e8f0;
+  }
+  
+  .compact-status-bar.green {
+    background-color: #1a4a3a;
+    border-color: #2d5a4a;
+    color: #68d391;
+  }
+  
+  .compact-status-bar.yellow {
+    background-color: #4a3a1a;
+    border-color: #5a4a2d;
+    color: #f6e05e;
+  }
+  
+  .compact-status-bar.red {
+    background-color: #4a1a1a;
+    border-color: #5a2d2d;
+    color: #fc8181;
+  }
+  
+  .compact-status-bar.gray {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #a0aec0;
+  }
+  
+  .compact-hybrid-badge {
+    background-color: #4a3a1a;
+    border-color: #5a4a2d;
+    color: #f6e05e;
+  }
+}

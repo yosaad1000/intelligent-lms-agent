@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { supabase } from '../lib/supabase';
 import { api } from '../lib/api';
 import { useAuth } from './AuthContext';
+import { useMockAuth } from './MockAuthContext';
 import { useNetworkRecovery } from '../hooks/useNetworkStatus';
 import { 
   notificationApiService, 
@@ -39,6 +40,16 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+// Conditional hook usage based on environment
+const useAuthHook = () => {
+  const isDev = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
+  if (isDev) {
+    return useMockAuth();
+  } else {
+    return useAuth();
+  }
+};
+
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -51,7 +62,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   });
   const [error, setError] = useState<string | null>(null);
   
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuthHook();
   const connectionManagerRef = useRef<RealtimeConnectionManager | null>(null);
   const isInitializedRef = useRef(false);
   

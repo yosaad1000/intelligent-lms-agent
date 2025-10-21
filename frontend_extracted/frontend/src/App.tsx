@@ -22,6 +22,11 @@ import QuizCenter from './pages/QuizCenter';
 import LearningAnalytics from './pages/LearningAnalytics';
 import InterviewPractice from './pages/InterviewPractice';
 import Profile from './pages/Profile';
+import AgentTester from './components/AgentTester';
+import ChatTester from './components/ChatTester';
+import DocumentTester from './components/DocumentTester';
+import QuizTester from './components/QuizTester';
+import InterviewTester from './components/InterviewTester';
 
 // Teacher pages
 import TeacherClasses from './pages/teacher/TeacherClasses';
@@ -120,6 +125,13 @@ const AppRoutes: React.FC = () => {
         
         {/* User Settings */}
         <Route path="profile" element={<Profile />} />
+        
+        {/* Agent Testing (Hybrid Mode) */}
+        <Route path="agent-tester" element={<AgentTester />} />
+        <Route path="agent-tester/chat" element={<ChatTester />} />
+        <Route path="agent-tester/documents" element={<DocumentTester />} />
+        <Route path="agent-tester/quiz" element={<QuizTester />} />
+        <Route path="agent-tester/interview" element={<InterviewTester />} />
         
         {/* Teacher Routes */}
         <Route path="teacher/classes" element={<TeacherClasses />} />

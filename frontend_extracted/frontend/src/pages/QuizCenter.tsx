@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMockAuth } from '../contexts/MockAuthContext';
 import { apiBedrockAgentService } from '../services/apiBedrockAgentService';
+import { directAgentService } from '../services/directAgentService';
 import { mockDataService } from '../services/mockDataService';
 import QuizTest from '../components/QuizTest';
+import { useHybridMode, useAgentService } from '../hooks/useHybridMode';
+import HybridModeIndicator from '../components/HybridModeIndicator';
 import { 
   PlayIcon,
   ClockIcon,
@@ -78,26 +81,30 @@ const useAuthContext = () => {
   }
 };
 
+// Hook to detect hybrid testing mode (keeping for backward compatibility)
+const useHybridModeCompat = () => {
+  return import.meta.env.VITE_USE_MOCK_AUTH === 'true' && 
+         import.meta.env.VITE_USE_MOCK_AGENT === 'false';
+};
+
 const QuizCenter: React.FC = () => {
   const { user } = useAuthContext();
+  const { isHybridMode, isAgentConnected } = useHybridMode();
+  const { agentService, agentServiceType } = useAgentService();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [recentAttempts, setRecentAttempts] = useState<QuizAttempt[]>([]);
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [currentQuizSession, setCurrentQuizSession] = useState<QuizSession | null>(null);
   const [showQuizInterface, setShowQuizInterface] = useState(false);
-  const [agentConnected, setAgentConnected] = useState(false);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string>('');
   const [showQuizTest, setShowQuizTest] = useState(false);
 
-  // Initialize quiz data and check agent connectivity
+  // Initialize quiz data
   useEffect(() => {
     const initializeQuizCenter = async () => {
       try {
-        // Check agent connectivity
-        const isConnected = await apiBedrockAgentService.validateConfiguration();
-        setAgentConnected(isConnected);
 
         // Load existing quizzes (mock data for now, would be from backend)
         const mockQuizzes: Quiz[] = [
@@ -169,7 +176,6 @@ const QuizCenter: React.FC = () => {
         setRecentAttempts(mockAttempts);
       } catch (error) {
         console.error('Failed to initialize quiz center:', error);
-        setAgentConnected(false);
       }
     };
 
@@ -212,81 +218,124 @@ const QuizCenter: React.FC = () => {
         throw new Error('Selected document not found');
       }
 
-      // Generate session ID for quiz generation
-      const sessionId = apiBedrockAgentService.generateSessionId(user?.id);
-      
-      // Send quiz generation request to Bedrock Agent
-      const quizPrompt = `Generate a comprehensive quiz based on the document "${document.name}". 
-      
-      Please create a quiz with the following specifications:
-      - 10-15 multiple choice questions
-      - 3-5 true/false questions  
-      - 2-3 short answer questions
-      - Mix of difficulty levels (easy, medium, hard)
-      - Include explanations for correct answers
-      - Focus on key concepts and important details
-      
-      Format the response as a JSON object with the following structure:
-      {
-        "title": "Quiz title based on document content",
-        "description": "Brief description of what the quiz covers",
-        "difficulty": "medium",
-        "estimatedDuration": 25,
-        "questions": [
-          {
-            "id": "q1",
-            "type": "multiple-choice",
-            "question": "Question text",
-            "options": ["Option A", "Option B", "Option C", "Option D"],
-            "correctAnswer": 0,
-            "explanation": "Why this answer is correct",
-            "points": 1
-          }
-        ]
-      }`;
+      let quizData;
 
-      const response = await apiBedrockAgentService.sendMessage(
-        quizPrompt,
-        sessionId,
-        user?.id,
-        {
-          action: 'generate_quiz',
-          document: document.name,
-          userId: user?.id
-        }
-      );
-
-      if (response.success) {
-        // Parse the quiz from agent response
-        const quizData = parseQuizFromAgentResponse(response.message.content, document);
+      if (agentServiceType === 'direct') {
+        // Use DirectAgentService for hybrid mode
+        console.log('🔄 Generating quiz using DirectAgentService...');
         
-        if (quizData) {
-          const newQuiz: Quiz = {
-            id: Date.now().toString(),
-            title: quizData.title || `Quiz: ${document.name}`,
-            description: quizData.description || `AI-generated quiz based on ${document.name}`,
-            questionCount: quizData.questions?.length || 10,
-            duration: quizData.estimatedDuration || 25,
-            difficulty: quizData.difficulty || 'medium',
-            subject: 'AI Generated',
-            createdDate: new Date().toISOString().split('T')[0],
-            attempts: 0,
-            status: 'available',
-            sourceDocument: document.name,
-            generatedBy: 'ai',
-            questions: quizData.questions
-          };
-          
-          setQuizzes(prev => [newQuiz, ...prev]);
-          setSelectedDocument('');
-          
-          // Show success message
-          alert(`Quiz "${newQuiz.title}" generated successfully!`);
+        const documentContent = `Document: ${document.name}\nContent: ${(document as any).content || document.name || 'Document content not available'}`;
+        
+        const quiz = await directAgentService.generateQuiz(documentContent, {
+          difficulty: 'medium',
+          questionCount: 10,
+          topics: [document.name],
+          questionTypes: ['multiple-choice', 'true-false', 'short-answer']
+        });
+
+        // Convert DirectAgentService quiz format to our format
+        quizData = {
+          title: quiz.title,
+          description: `AI-generated quiz based on ${document.name}`,
+          difficulty: quiz.metadata.difficulty,
+          estimatedDuration: quiz.metadata.estimatedTime,
+          questions: quiz.questions.map(q => ({
+            id: q.id,
+            type: q.type,
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.type === 'multiple-choice' ? 
+              (q.options?.indexOf(q.correctAnswer) || 0) : q.correctAnswer,
+            explanation: q.explanation,
+            points: 1
+          }))
+        };
+      } else if (agentServiceType === 'api') {
+        // Use existing API service for normal mode
+        const sessionId = apiBedrockAgentService.generateSessionId(user?.id);
+        
+        const quizPrompt = `Generate a comprehensive quiz based on the document "${document.name}". 
+        
+        Please create a quiz with the following specifications:
+        - 10-15 multiple choice questions
+        - 3-5 true/false questions  
+        - 2-3 short answer questions
+        - Mix of difficulty levels (easy, medium, hard)
+        - Include explanations for correct answers
+        - Focus on key concepts and important details
+        
+        Format the response as a JSON object with the following structure:
+        {
+          "title": "Quiz title based on document content",
+          "description": "Brief description of what the quiz covers",
+          "difficulty": "medium",
+          "estimatedDuration": 25,
+          "questions": [
+            {
+              "id": "q1",
+              "type": "multiple-choice",
+              "question": "Question text",
+              "options": ["Option A", "Option B", "Option C", "Option D"],
+              "correctAnswer": 0,
+              "explanation": "Why this answer is correct",
+              "points": 1
+            }
+          ]
+        }`;
+
+        const response = await apiBedrockAgentService.sendMessage(
+          quizPrompt,
+          sessionId,
+          user?.id,
+          {
+            action: 'generate_quiz',
+            document: document.name,
+            userId: user?.id
+          }
+        );
+
+        if (response.success) {
+          quizData = parseQuizFromAgentResponse(response.message.content, document);
         } else {
-          throw new Error('Failed to parse quiz from agent response');
+          throw new Error(response.error || 'Failed to generate quiz');
         }
       } else {
-        throw new Error(response.error || 'Failed to generate quiz');
+        // Mock mode - generate fallback quiz
+        console.log('🔄 Generating mock quiz...');
+        
+        quizData = {
+          title: `Mock Quiz: ${document.name}`,
+          description: `Mock quiz generated from ${document.name}`,
+          difficulty: 'medium',
+          estimatedDuration: 15,
+          questions: generateFallbackQuestions(document.name)
+        };
+      }
+      
+      if (quizData) {
+        const newQuiz: Quiz = {
+          id: Date.now().toString(),
+          title: quizData.title || `Quiz: ${document.name}`,
+          description: quizData.description || `AI-generated quiz based on ${document.name}`,
+          questionCount: quizData.questions?.length || 10,
+          duration: quizData.estimatedDuration || 25,
+          difficulty: quizData.difficulty || 'medium',
+          subject: 'AI Generated',
+          createdDate: new Date().toISOString().split('T')[0],
+          attempts: 0,
+          status: 'available',
+          sourceDocument: document.name,
+          generatedBy: 'ai',
+          questions: quizData.questions
+        };
+        
+        setQuizzes(prev => [newQuiz, ...prev]);
+        setSelectedDocument('');
+        
+        // Show success message
+        alert(`Quiz "${newQuiz.title}" generated successfully!`);
+      } else {
+        throw new Error('Failed to parse quiz from agent response');
       }
     } catch (error) {
       console.error('Quiz generation failed:', error);
@@ -681,20 +730,11 @@ const QuizCenter: React.FC = () => {
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                   Quiz Center
                 </h1>
-                <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs ${
-                  agentConnected 
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                }`}>
-                  <div className={`w-2 h-2 rounded-full ${
-                    agentConnected ? 'bg-green-500' : 'bg-red-500'
-                  }`}></div>
-                  <span>{agentConnected ? 'AI Ready' : 'AI Offline'}</span>
-                </div>
+                <HybridModeIndicator />
               </div>
               <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">
-                {agentConnected 
-                  ? 'Generate AI-powered quizzes from your study materials'
+                {isAgentConnected 
+                  ? `Generate ${agentServiceType === 'mock' ? 'mock' : 'AI-powered'} quizzes from your study materials`
                   : 'AI quiz generation temporarily unavailable'
                 }
               </p>
@@ -730,7 +770,7 @@ const QuizCenter: React.FC = () => {
               
               <button
                 onClick={generateQuizFromDocument}
-                disabled={generatingQuiz || !agentConnected || !selectedDocument}
+                disabled={generatingQuiz || !selectedDocument || (agentServiceType !== 'mock' && !isAgentConnected)}
                 className="btn-mobile bg-blue-600 hover:bg-blue-700 text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm inline-flex items-center justify-center sm:justify-start disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generatingQuiz ? (
@@ -739,7 +779,8 @@ const QuizCenter: React.FC = () => {
                   <SparklesIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                 )}
                 <span className="text-sm sm:text-base">
-                  {generatingQuiz ? 'Generating...' : 'Generate AI Quiz'}
+                  {generatingQuiz ? 'Generating...' : 
+                   agentServiceType === 'mock' ? 'Generate Mock Quiz' : 'Generate AI Quiz'}
                 </span>
               </button>
             </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useMockAuth } from '../contexts/MockAuthContext';
 import { useAIChat } from '../hooks/useAIChat';
 import ClassCard from '../components/ClassCard';
 import AIChatToggle from '../components/AIChat/AIChatToggle';
@@ -29,9 +30,19 @@ interface TeachingSubject {
   created_at: string;
 }
 
+// Conditional hook usage based on environment
+const useAuthHook = () => {
+  const isDev = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
+  if (isDev) {
+    return useMockAuth();
+  } else {
+    return useAuth();
+  }
+};
+
 const TeacherDashboard: React.FC = () => {
   console.log('🏫 TeacherDashboard component rendered');
-  const { user } = useAuth();
+  const { user } = useAuthHook();
   const navigate = useNavigate();
   const [subjects, setSubjects] = useState<TeachingSubject[]>([]);
   const [loading, setLoading] = useState(true);

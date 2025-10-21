@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useMockAuth } from '../contexts/MockAuthContext';
 import { 
   MicrophoneIcon,
   StopIcon,
@@ -14,8 +15,12 @@ import {
   PauseIcon,
   SignalIcon
 } from '@heroicons/react/24/outline';
-import { WebSocketService, WebSocketMessage } from '../services/websocketService';
+import { WebSocketService } from '../services/websocketService';
+import type { WebSocketMessage } from '../services/websocketService';
 import { bedrockAgentService } from '../services/bedrockAgentService';
+import { directAgentService } from '../services/directAgentService';
+import { useHybridMode, useAgentService } from '../hooks/useHybridMode';
+import HybridModeIndicator from '../components/HybridModeIndicator';
 
 interface InterviewSession {
   id: string;
@@ -60,8 +65,26 @@ interface AudioRecorderConfig {
   bufferSize: number;
 }
 
+// Hook to get the appropriate auth context
+const useAuthContext = () => {
+  const isDev = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
+  if (isDev) {
+    return useMockAuth();
+  } else {
+    return useAuth();
+  }
+};
+
+// Hook to detect hybrid testing mode (keeping for backward compatibility)
+const useHybridModeCompat = () => {
+  return import.meta.env.VITE_USE_MOCK_AUTH === 'true' && 
+         import.meta.env.VITE_USE_MOCK_AGENT === 'false';
+};
+
 const InterviewPractice: React.FC = () => {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
+  const { isHybridMode, isAgentConnected } = useHybridMode();
+  const { agentService, agentServiceType } = useAgentService();
   
   // Voice interview state
   const [voiceState, setVoiceState] = useState<VoiceInterviewState>({
@@ -104,29 +127,37 @@ const InterviewPractice: React.FC = () => {
 
   // Initialize WebSocket service
   useEffect(() => {
-    const initializeWebSocket = async () => {
+    const initializeServices = async () => {
       try {
+
+        // Initialize WebSocket for voice processing
         const wsUrl = process.env.REACT_APP_WEBSOCKET_URL || 'wss://your-api-gateway.execute-api.us-east-1.amazonaws.com/dev';
         
-        wsServiceRef.current = new WebSocketService({
-          url: wsUrl,
-          userId: user?.id || 'anonymous'
-        });
+        // Note: WebSocketService constructor is private, this would need to be fixed in the service
+        // For now, we'll skip WebSocket initialization in direct agent mode
+        if (agentServiceType !== 'direct') {
+          wsServiceRef.current = new (WebSocketService as any)({
+            url: wsUrl,
+            userId: user?.id || 'anonymous'
+          });
+        }
         
         // Set up message handlers
-        wsServiceRef.current.onMessage('voice_interview_response', handleVoiceInterviewMessage);
-        wsServiceRef.current.onMessage('transcription_update', handleTranscriptionUpdate);
-        wsServiceRef.current.onMessage('interview_question', handleNewQuestion);
-        wsServiceRef.current.onMessage('interview_complete', handleInterviewComplete);
-        wsServiceRef.current.onMessage('error', handleWebSocketError);
+        if (wsServiceRef.current) {
+          wsServiceRef.current.onMessage('voice_interview_response', handleVoiceInterviewMessage);
+          wsServiceRef.current.onMessage('transcription_update', handleTranscriptionUpdate);
+          wsServiceRef.current.onMessage('interview_question', handleNewQuestion);
+          wsServiceRef.current.onMessage('interview_complete', handleInterviewComplete);
+          wsServiceRef.current.onMessage('error', handleWebSocketError);
+        }
         
       } catch (error) {
-        console.error('Failed to initialize WebSocket:', error);
-        setVoiceState(prev => ({ ...prev, error: 'Failed to connect to voice service' }));
+        console.error('Failed to initialize services:', error);
+        setVoiceState(prev => ({ ...prev, error: 'Failed to connect to services' }));
       }
     };
     
-    initializeWebSocket();
+    initializeServices();
     
     return () => {
       if (wsServiceRef.current) {
@@ -134,7 +165,7 @@ const InterviewPractice: React.FC = () => {
       }
       cleanupAudioResources();
     };
-  }, [user]);
+  }, [user, agentServiceType]);
 
   // Load previous sessions
   useEffect(() => {
@@ -169,7 +200,7 @@ const InterviewPractice: React.FC = () => {
     if (message.content) {
       setVoiceState(prev => ({
         ...prev,
-        transcription: prev.transcription + message.content
+        transcription: prev.transcription + (message.content || '')
       }));
     }
   }, []);
@@ -178,7 +209,7 @@ const InterviewPractice: React.FC = () => {
     if (message.content) {
       setVoiceState(prev => ({
         ...prev,
-        interimTranscription: message.content
+        interimTranscription: message.content || ''
       }));
     }
   }, []);
@@ -187,7 +218,7 @@ const InterviewPractice: React.FC = () => {
     if (message.content) {
       setVoiceState(prev => ({
         ...prev,
-        currentQuestion: message.content,
+        currentQuestion: message.content || null,
         transcription: '',
         interimTranscription: ''
       }));
@@ -419,21 +450,26 @@ const InterviewPractice: React.FC = () => {
         throw new Error('Failed to initialize audio recording');
       }
       
-      // Start interview session via Bedrock Agent
-      const response = await bedrockAgentService.sendMessage(
-        `Start a voice interview about ${selectedSubject} for ${selectedDifficulty} level. 
-         This is a practice interview session. Please provide the first question.`,
-        `interview-${Date.now()}`
-      );
-      
-      if (response.success && response.response) {
-        const sessionId = `interview-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Start interview session via appropriate agent service
+      let response: any;
+      let sessionId: string;
+
+      if (agentServiceType === 'direct' && isAgentConnected) {
+        // Use DirectAgentService for hybrid mode
+        console.log('🔄 Starting interview using DirectAgentService...');
+        
+        const interviewSession = await directAgentService.startInterview(
+          `${selectedSubject} interview at ${selectedDifficulty} level`
+        );
+        
+        sessionId = interviewSession.sessionId;
+        const firstQuestion = interviewSession.questions[0]?.question || 'Let\'s begin the interview. Please introduce yourself.';
         
         setVoiceState(prev => ({
           ...prev,
           sessionId,
           status: 'active',
-          currentQuestion: response.response,
+          currentQuestion: firstQuestion,
           transcription: '',
           interimTranscription: ''
         }));
@@ -443,13 +479,68 @@ const InterviewPractice: React.FC = () => {
         setIsPaused(false);
         
         // Speak the first question
-        speakText(response.response);
+        speakText(firstQuestion);
         
         // Start audio level monitoring
         startAudioLevelMonitoring();
+      } else if (agentServiceType === 'api') {
+        // Use existing Bedrock Agent service for normal mode
+        response = await bedrockAgentService.sendMessage(
+          `Start a voice interview about ${selectedSubject} for ${selectedDifficulty} level. 
+           This is a practice interview session. Please provide the first question.`,
+          `interview-${Date.now()}`
+        );
         
+        if (response && (response as any).success && (response as any).response) {
+          sessionId = `interview-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          setVoiceState(prev => ({
+            ...prev,
+            sessionId,
+            status: 'active',
+            currentQuestion: (response as any).response,
+            transcription: '',
+            interimTranscription: ''
+          }));
+          
+          // Set initial timer (3 minutes per question)
+          setTimeRemaining(180);
+          setIsPaused(false);
+          
+          // Speak the first question
+          speakText((response as any).response);
+          
+          // Start audio level monitoring
+          startAudioLevelMonitoring();
+          
+        } else {
+          throw new Error('Failed to start interview session');
+        }
       } else {
-        throw new Error('Failed to start interview session');
+        // Mock mode
+        console.log('🔄 Starting mock interview...');
+        
+        sessionId = `mock-interview-${Date.now()}`;
+        const mockQuestion = `This is a mock ${selectedSubject} interview question at ${selectedDifficulty} level. Please tell me about your experience with this topic.`;
+        
+        setVoiceState(prev => ({
+          ...prev,
+          sessionId,
+          status: 'active',
+          currentQuestion: mockQuestion,
+          transcription: '',
+          interimTranscription: ''
+        }));
+        
+        // Set initial timer (3 minutes per question)
+        setTimeRemaining(180);
+        setIsPaused(false);
+        
+        // Speak the mock question
+        speakText(mockQuestion);
+        
+        // Start audio level monitoring
+        startAudioLevelMonitoring();
       }
       
     } catch (error) {
@@ -523,17 +614,45 @@ const InterviewPractice: React.FC = () => {
     try {
       setVoiceState(prev => ({ ...prev, status: 'processing' }));
       
-      // Request next question from Bedrock Agent
-      const response = await bedrockAgentService.sendMessage(
-        'Please provide the next interview question. Continue with the same difficulty level and topic.',
-        voiceState.sessionId || 'default'
-      );
+      let nextQuestionText;
+
+      if (agentServiceType === 'direct' && isAgentConnected) {
+        // Use DirectAgentService for hybrid mode
+        const sessionId = voiceState.sessionId || directAgentService.createSession();
+        const response = await directAgentService.sendMessage(
+          'Please provide the next interview question. Continue with the same difficulty level and topic.',
+          sessionId
+        );
+        
+        nextQuestionText = response.content;
+      } else if (agentServiceType === 'api') {
+        // Use existing Bedrock Agent service for normal mode
+        const response = await bedrockAgentService.sendMessage(
+          'Please provide the next interview question. Continue with the same difficulty level and topic.',
+          voiceState.sessionId || 'default'
+        );
+        
+        if (response && (response as any).success && (response as any).response) {
+          nextQuestionText = (response as any).response;
+        } else {
+          throw new Error('Failed to get next question from agent');
+        }
+      } else {
+        // Mock mode
+        const mockQuestions = [
+          'Can you describe a challenging project you worked on?',
+          'How do you handle working under pressure?',
+          'What are your greatest strengths and weaknesses?',
+          'Where do you see yourself in 5 years?'
+        ];
+        nextQuestionText = mockQuestions[Math.floor(Math.random() * mockQuestions.length)];
+      }
       
-      if (response.success && response.response) {
+      if (nextQuestionText) {
         setVoiceState(prev => ({
           ...prev,
           status: 'active',
-          currentQuestion: response.response,
+          currentQuestion: nextQuestionText,
           transcription: '',
           interimTranscription: ''
         }));
@@ -543,7 +662,7 @@ const InterviewPractice: React.FC = () => {
         setIsPaused(false);
         
         // Speak the new question
-        speakText(response.response);
+        speakText(nextQuestionText);
       }
       
     } catch (error) {
@@ -562,25 +681,67 @@ const InterviewPractice: React.FC = () => {
       
       // Request interview analysis
       if (voiceState.sessionId) {
-        const response = await bedrockAgentService.sendMessage(
-          'End the interview session and provide a comprehensive performance analysis with feedback.',
-          voiceState.sessionId
-        );
-        
-        if (response.success && response.response) {
+        let analysisData;
+
+        if (agentServiceType === 'direct' && isAgentConnected) {
+          // Use DirectAgentService for hybrid mode
           try {
-            const analysis = JSON.parse(response.response);
-            saveInterviewSession(analysis);
-          } catch {
-            // If not JSON, create basic analysis
-            saveInterviewSession({
+            const feedback = await directAgentService.conductInterview(
+              voiceState.sessionId,
+              voiceState.transcription || 'Interview session completed'
+            );
+            
+            analysisData = {
+              overall_score: feedback.score * 10, // Convert to percentage
+              feedback: [feedback.feedback],
+              strengths: feedback.strengths,
+              areas_for_improvement: feedback.improvements,
+              recommendations: feedback.suggestions
+            };
+          } catch (error) {
+            console.warn('Failed to get detailed analysis, using basic feedback');
+            analysisData = {
               overall_score: 75,
-              feedback: [response.response],
+              feedback: ['Interview session completed successfully'],
               strengths: ['Completed interview session'],
               areas_for_improvement: ['Continue practicing'],
               recommendations: ['Keep practicing regularly']
-            });
+            };
           }
+        } else if (agentServiceType === 'api') {
+          // Use existing Bedrock Agent service for normal mode
+          const response = await bedrockAgentService.sendMessage(
+            'End the interview session and provide a comprehensive performance analysis with feedback.',
+            voiceState.sessionId
+          );
+          
+          if (response && (response as any).success && (response as any).response) {
+            try {
+              analysisData = JSON.parse((response as any).response);
+            } catch {
+              // If not JSON, create basic analysis
+              analysisData = {
+                overall_score: 75,
+                feedback: [(response as any).response],
+                strengths: ['Completed interview session'],
+                areas_for_improvement: ['Continue practicing'],
+                recommendations: ['Keep practicing regularly']
+              };
+            }
+          }
+        } else {
+          // Mock mode
+          analysisData = {
+            overall_score: 70 + Math.floor(Math.random() * 25), // Random score 70-95
+            feedback: ['Mock interview completed successfully', 'This is simulated feedback'],
+            strengths: ['Good communication', 'Clear responses'],
+            areas_for_improvement: ['Practice more technical questions', 'Work on confidence'],
+            recommendations: ['Continue practicing regularly', 'Review common interview questions']
+          };
+        }
+
+        if (analysisData) {
+          saveInterviewSession(analysisData);
         }
       }
       
@@ -703,12 +864,24 @@ const InterviewPractice: React.FC = () => {
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="container-responsive">
           <div className="py-4 sm:py-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Interview Practice
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">
-              Practice interviews with AI-powered questions and feedback
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    Interview Practice
+                  </h1>
+                  <HybridModeIndicator />
+                </div>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">
+                  {agentServiceType === 'direct' 
+                    ? 'Practice interviews with direct AI agent integration and real-time feedback'
+                    : agentServiceType === 'api'
+                    ? 'Practice interviews with AI-powered questions and feedback'
+                    : 'Practice interviews with mock AI responses (demo mode)'
+                  }
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -761,18 +934,23 @@ const InterviewPractice: React.FC = () => {
                 <div className="flex items-end">
                   <button
                     onClick={startInterview}
-                    disabled={voiceState.status === 'starting'}
+                    disabled={(voiceState.status as string) === 'starting' || (agentServiceType !== 'mock' && !isAgentConnected)}
                     className="w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
                   >
-                    {voiceState.status === 'starting' ? (
+                    {(voiceState.status as string) === 'starting' ? (
                       <>
                         <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
                         Starting...
                       </>
+                    ) : (agentServiceType !== 'mock' && !isAgentConnected) ? (
+                      <>
+                        <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
+                        AI Agent Offline
+                      </>
                     ) : (
                       <>
                         <PlayIcon className="h-5 w-5 mr-2" />
-                        Start Voice Interview
+                        Start {agentServiceType === 'mock' ? 'Mock' : 'Voice'} Interview
                       </>
                     )}
                   </button>

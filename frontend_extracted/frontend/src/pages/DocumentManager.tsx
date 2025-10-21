@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useMockAuth } from '../contexts/MockAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
   DocumentArrowUpIcon,
@@ -19,10 +20,32 @@ import {
   TagIcon,
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
-import { DocumentMetadata, UploadProgress, activeDocumentService } from '../services/documentService';
+import type { DocumentMetadata, UploadProgress } from '../services/documentService';
+import { activeDocumentService } from '../services/documentService';
+import { directAgentService } from '../services/directAgentService';
+import { useHybridMode, useAgentService } from '../hooks/useHybridMode';
+import HybridModeIndicator from '../components/HybridModeIndicator';
+
+// Hook to get the appropriate auth context
+const useAuthContext = () => {
+  const isDev = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
+  if (isDev) {
+    return useMockAuth();
+  } else {
+    return useAuth();
+  }
+};
+
+// Hook to detect hybrid testing mode (keeping for backward compatibility)
+const useHybridModeCompat = () => {
+  return import.meta.env.VITE_USE_MOCK_AUTH === 'true' && 
+         import.meta.env.VITE_USE_MOCK_AGENT === 'false';
+};
 
 const DocumentManager: React.FC = () => {
-  const { user, currentRole } = useAuth();
+  const { user, currentRole } = useAuthContext();
+  const { isHybridMode, isAgentConnected } = useHybridMode();
+  const { agentService, agentServiceType } = useAgentService();
   const navigate = useNavigate();
   const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,11 +63,11 @@ const DocumentManager: React.FC = () => {
   }, [user]);
 
   const loadUserDocuments = async () => {
-    if (!user?.user_id) return;
+    if (!user?.id) return;
     
     setLoading(true);
     try {
-      const userDocuments = await activeDocumentService.getUserDocuments(user.user_id);
+      const userDocuments = await activeDocumentService.getUserDocuments(user.id);
       setDocuments(userDocuments);
     } catch (error) {
       console.error('Failed to load documents:', error);
@@ -54,7 +77,7 @@ const DocumentManager: React.FC = () => {
   };
 
   const handleFileUpload = async (files: FileList) => {
-    if (!files || !user?.user_id) return;
+    if (!files || !user?.id) return;
 
     setLoading(true);
 
@@ -72,7 +95,7 @@ const DocumentManager: React.FC = () => {
         // Upload file with progress tracking
         const document = await activeDocumentService.uploadFile(
           file,
-          user.user_id,
+          user.id,
           (progress) => {
             setUploadProgress(prev => ({
               ...prev,
@@ -138,13 +161,13 @@ const DocumentManager: React.FC = () => {
   }, [user]);
 
   const handleDeleteDocument = async (id: string) => {
-    if (!user?.user_id) return;
+    if (!user?.id) return;
     
     const confirmed = window.confirm('Are you sure you want to delete this document?');
     if (!confirmed) return;
 
     try {
-      const success = await activeDocumentService.deleteDocument(id, user.user_id);
+      const success = await activeDocumentService.deleteDocument(id, user.id);
       if (success) {
         setDocuments(prev => prev.filter(doc => doc.id !== id));
       } else {
@@ -162,38 +185,68 @@ const DocumentManager: React.FC = () => {
   };
 
   const handleGenerateQuiz = async (document: DocumentMetadata) => {
-    if (!user?.user_id) return;
+    if (!user?.id) return;
 
     try {
       setLoading(true);
-      const result = await activeDocumentService.generateQuizFromDocument(
-        document.id,
-        user.user_id,
-        5
-      );
+      
+      if (agentServiceType === 'direct' && isAgentConnected) {
+        // Use DirectAgentService for hybrid mode
+        console.log('🔄 Generating quiz using DirectAgentService...');
+        
+        const documentContent = `Document: ${document.name}\nContent: ${document.extractedText || 'Document content not available'}`;
+        
+        const quiz = await directAgentService.generateQuiz(documentContent, {
+          difficulty: 'medium',
+          questionCount: 5,
+          topics: [document.name],
+          questionTypes: ['multiple-choice', 'true-false', 'short-answer']
+        });
 
-      if (result.success) {
         // Navigate to quiz page with generated quiz
         navigate('/quiz', { 
           state: { 
-            quiz: result.quiz, 
+            quiz: {
+              id: quiz.id,
+              title: quiz.title,
+              questions: quiz.questions,
+              metadata: quiz.metadata
+            }, 
             documentName: document.name,
-            sessionId: result.sessionId
+            sessionId: directAgentService.createSession()
           } 
         });
       } else {
-        alert('Failed to generate quiz: ' + result.error);
+        // Use existing document service for normal mode
+        const result = await activeDocumentService.generateQuizFromDocument(
+          document.id,
+          user.id,
+          5
+        );
+
+        if (result.success) {
+          // Navigate to quiz page with generated quiz
+          navigate('/quiz', { 
+            state: { 
+              quiz: result.quiz, 
+              documentName: document.name,
+              sessionId: result.sessionId
+            } 
+          });
+        } else {
+          alert('Failed to generate quiz: ' + result.error);
+        }
       }
     } catch (error) {
       console.error('Quiz generation failed:', error);
-      alert('Failed to generate quiz');
+      alert(`Failed to generate quiz: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSearchDocuments = async (query: string) => {
-    if (!user?.user_id) return;
+    if (!user?.id) return;
 
     if (!query.trim()) {
       loadUserDocuments();
@@ -202,10 +255,54 @@ const DocumentManager: React.FC = () => {
 
     try {
       setLoading(true);
-      const results = await activeDocumentService.searchDocuments(query, user.user_id);
+      const results = await activeDocumentService.searchDocuments(query, user.id);
       setDocuments(results);
     } catch (error) {
       console.error('Search failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAnalyzeDocument = async (document: DocumentMetadata) => {
+    if (agentServiceType !== 'direct' || !isAgentConnected) {
+      alert('Document analysis is only available with direct agent service');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('🔄 Analyzing document using DirectAgentService...');
+      
+      const documentUrl = document.downloadUrl || `document://${document.name}`;
+      const analysis = await directAgentService.analyzeDocument(
+        documentUrl, 
+        'Provide a comprehensive analysis of this document including key insights and main topics'
+      );
+
+      // Show analysis results in an alert (could be enhanced with a modal)
+      const analysisText = `
+Document Analysis Results:
+
+Summary: ${analysis.summary}
+
+Key Points:
+${analysis.keyPoints.map(point => `• ${point}`).join('\n')}
+
+Insights:
+${analysis.insights.map(insight => `• ${insight}`).join('\n')}
+
+Suggested Questions:
+${analysis.suggestedQuestions.map(q => `• ${q}`).join('\n')}
+
+Processing Time: ${analysis.processingTime}ms
+Confidence: ${Math.round(analysis.confidence * 100)}%
+      `;
+
+      alert(analysisText);
+    } catch (error) {
+      console.error('Document analysis failed:', error);
+      alert(`Failed to analyze document: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -281,12 +378,24 @@ const DocumentManager: React.FC = () => {
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="container-responsive">
           <div className="py-4 sm:py-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Document Manager
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">
-              Upload and manage your study materials for AI processing
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    Document Manager
+                  </h1>
+                  <HybridModeIndicator />
+                </div>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">
+                  {agentServiceType === 'direct' 
+                    ? 'Upload and manage documents with direct AI agent processing'
+                    : agentServiceType === 'api'
+                    ? 'Upload and manage your study materials for AI processing'
+                    : 'Upload and manage your study materials (mock mode)'
+                  }
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -517,6 +626,16 @@ const DocumentManager: React.FC = () => {
                             <EyeIcon className="h-4 w-4" />
                           </button>
                           
+                          {agentServiceType === 'direct' && isAgentConnected && (
+                            <button 
+                              onClick={() => handleAnalyzeDocument(doc)}
+                              className="p-2 text-gray-400 hover:text-orange-500 transition-colors"
+                              title="Analyze document with AI"
+                            >
+                              <SparklesIcon className="h-4 w-4" />
+                            </button>
+                          )}
+                          
                           <button 
                             onClick={() => handleGenerateQuiz(doc)}
                             className="p-2 text-gray-400 hover:text-green-500 transition-colors"
@@ -718,6 +837,15 @@ const DocumentManager: React.FC = () => {
 
               {/* Action Buttons */}
               <div className="mt-6 flex flex-wrap gap-3">
+                {agentServiceType === 'direct' && isAgentConnected && (
+                  <button
+                    onClick={() => handleAnalyzeDocument(selectedDocument)}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center"
+                  >
+                    <SparklesIcon className="h-4 w-4 mr-2" />
+                    Analyze with AI
+                  </button>
+                )}
                 <button
                   onClick={() => handleGenerateQuiz(selectedDocument)}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"

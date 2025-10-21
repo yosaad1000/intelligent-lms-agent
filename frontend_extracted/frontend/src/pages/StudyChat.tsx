@@ -2,8 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMockAuth } from '../contexts/MockAuthContext';
 import { apiBedrockAgentService } from '../services/apiBedrockAgentService';
+import { directAgentService, AgentResponse } from '../services/directAgentService';
 import type { AgentMessage } from '../services/apiBedrockAgentService';
 import { mockDataService } from '../services/mockDataService';
+import { useHybridMode, useAgentService } from '../hooks/useHybridMode';
+import HybridModeIndicator from '../components/HybridModeIndicator';
 import { 
   PaperAirplaneIcon,
   DocumentTextIcon,
@@ -40,6 +43,8 @@ const useAuthContext = () => {
 
 const StudyChat: React.FC = () => {
   const { user } = useAuthContext();
+  const { isHybridMode, isAgentConnected, statusIndicators } = useHybridMode();
+  const { agentService, agentServiceType } = useAgentService();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -49,23 +54,30 @@ const StudyChat: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [agentCapabilities, setAgentCapabilities] = useState<string[]>([]);
-  const [isAgentConnected, setIsAgentConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initialize agent and load data
   useEffect(() => {
     const initializeChat = async () => {
       try {
-        // Get agent capabilities
-        const capabilities = await apiBedrockAgentService.getAgentCapabilities();
+        // Get agent capabilities based on service type
+        let capabilities: string[] = [];
+        if (agentServiceType === 'direct') {
+          capabilities = ['Document Analysis', 'Quiz Generation', 'Interview Practice', 'Real-time Chat'];
+        } else if (agentServiceType === 'api') {
+          capabilities = await apiBedrockAgentService.getAgentCapabilities();
+        } else {
+          capabilities = ['Mock Chat', 'Sample Responses'];
+        }
         setAgentCapabilities(capabilities);
         
-        // Validate agent connection
-        const isConnected = await apiBedrockAgentService.validateConfiguration();
-        setIsAgentConnected(isConnected);
-        
-        // Generate session ID
-        const sessionId = apiBedrockAgentService.generateSessionId(user?.id);
+        // Generate session ID based on service type
+        let sessionId: string;
+        if (agentServiceType === 'direct') {
+          sessionId = directAgentService.createSession();
+        } else {
+          sessionId = apiBedrockAgentService.generateSessionId(user?.id);
+        }
         setCurrentSessionId(sessionId);
         
         // Load mock conversations
@@ -101,12 +113,11 @@ const StudyChat: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to initialize chat:', error);
-        setIsAgentConnected(false);
       }
     };
 
     initializeChat();
-  }, [user]);
+  }, [user, agentServiceType]);
 
   const loadConversationMessages = (conversationId: string) => {
     // Mock messages for the conversation - in a real app, this would load from backend
@@ -162,31 +173,87 @@ const StudyChat: React.FC = () => {
     setIsTyping(true);
 
     try {
-      // Get user context for better responses
-      const userContext = {
-        role: 'student', // Default role for now
-        userId: user?.id,
-        documents: mockDataService.getDocuments(undefined, user?.id),
-        classes: mockDataService.getStudentClasses(user?.id || '')
-      };
+      let agentResponse: Message;
 
-      // Send message to Bedrock Agent
-      const response = await apiBedrockAgentService.sendMessage(
-        messageToSend,
-        currentSessionId,
-        user?.id,
-        userContext
-      );
+      if (agentServiceType === 'direct') {
+        console.log('🔄 Using Direct Agent Service (Hybrid Mode)');
+        
+        // Use Direct Agent Service for real Bedrock Agent
+        const response: AgentResponse = await directAgentService.sendMessage(
+          messageToSend,
+          currentSessionId
+        );
 
-      setMessages(prev => [...prev, response.message]);
+        if (response.error) {
+          throw new Error(response.error);
+        }
+
+        agentResponse = {
+          id: response.messageId,
+          content: response.content,
+          sender: 'agent',
+          timestamp: response.timestamp,
+          metadata: response.metadata
+        };
+
+        // Update session ID if it was created
+        if (!currentSessionId && response.sessionId) {
+          setCurrentSessionId(response.sessionId);
+        }
+
+      } else if (agentServiceType === 'api') {
+        console.log('🔄 Using API Bedrock Agent Service (Standard Mode)');
+        
+        // Get user context for better responses
+        const userContext = {
+          role: 'student', // Default role for now
+          userId: user?.id,
+          documents: mockDataService.getDocuments(undefined, user?.id),
+          classes: mockDataService.getStudentClasses(user?.id || '')
+        };
+
+        // Use existing API service
+        const response = await apiBedrockAgentService.sendMessage(
+          messageToSend,
+          currentSessionId,
+          user?.id,
+          userContext
+        );
+
+        agentResponse = response.message;
+      } else {
+        // Mock mode - use fallback service
+        console.log('🔄 Using Mock Agent Service');
+        
+        // Simulate processing delay
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+        
+        agentResponse = {
+          id: `mock-${Date.now()}`,
+          content: `This is a mock response to: "${messageToSend}". In production, this would be handled by the real AI agent.`,
+          sender: 'agent',
+          timestamp: new Date()
+        };
+      }
+
+      setMessages(prev => [...prev, agentResponse]);
       
     } catch (error) {
       console.error('Failed to get agent response:', error);
       
-      // Fallback error message
+      // Service-specific error messages
+      let errorContent: string;
+      if (agentServiceType === 'direct') {
+        errorContent = "I'm having trouble connecting to the Bedrock Agent. Please check your AWS configuration and try again.";
+      } else if (agentServiceType === 'api') {
+        errorContent = "I'm having trouble connecting to the API service. Please try again in a moment.";
+      } else {
+        errorContent = "Mock service error. This would normally be handled by the real AI agent.";
+      }
+      
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
-        content: "I'm sorry, I'm having trouble connecting to the AI service right now. Please try again in a moment.",
+        content: errorContent,
         sender: 'agent',
         timestamp: new Date()
       };
@@ -217,8 +284,13 @@ const StudyChat: React.FC = () => {
     setCurrentConversation(newConversation.id);
     setMessages([]);
     
-    // Generate new session ID for new conversation
-    const newSessionId = apiBedrockAgentService.generateSessionId(user?.id);
+    // Generate new session ID for new conversation based on service type
+    let newSessionId: string;
+    if (agentServiceType === 'direct') {
+      newSessionId = directAgentService.createSession();
+    } else {
+      newSessionId = apiBedrockAgentService.generateSessionId(user?.id);
+    }
     setCurrentSessionId(newSessionId);
   };
 
@@ -309,16 +381,7 @@ const StudyChat: React.FC = () => {
                   <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                     {conversations.find(c => c.id === currentConversation)?.title || 'AI Study Assistant'}
                   </h1>
-                  <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs ${
-                    isAgentConnected 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                  }`}>
-                    <div className={`w-2 h-2 rounded-full ${
-                      isAgentConnected ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                    <span>{isAgentConnected ? 'Connected' : 'Offline'}</span>
-                  </div>
+                  <HybridModeIndicator />
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {isAgentConnected 

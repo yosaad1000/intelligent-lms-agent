@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useMockAuth } from '../../contexts/MockAuthContext';
 
 interface NavItem {
   name: string;
@@ -9,9 +10,19 @@ interface NavItem {
   roles?: string[];
 }
 
+// Conditional hook usage based on environment
+const useAuthHook = () => {
+  const isDev = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
+  if (isDev) {
+    return useMockAuth();
+  } else {
+    return useAuth();
+  }
+};
+
 const Sidebar: React.FC = () => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user } = useAuthHook();
 
   const navigation: NavItem[] = [
     { name: 'Dashboard', href: '/dashboard', icon: '📊' },
