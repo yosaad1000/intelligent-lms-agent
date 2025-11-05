@@ -2,6 +2,10 @@
 .env
 .env.local
 .env.production
+.env.frontend
+frontend/.env
+frontend/.env.local
+frontend/.env.production
 
 # Python
 __pycache__/
