@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-11-05T16:44:02.695456",
+  "validation_results": {
+    "documentation_links": {
+      "status": "PASSED",
+      "missing_docs": [],
+      "missing_interfaces": [],
+      "total_docs_checked": 6,
+      "total_interfaces_checked": 3
+    },
+    "build_process": {
+      "status": "PASSED",
+      "cloudformation_template_valid": true,
+      "requirements_file_exists": true,
+      "python_syntax_valid": true,
+      "invalid_python_files": []
+    },
+    "cleanup_status": {
+      "status": "WARNING",
+      "pycache_directories": [
+        "src\\chat\\__pycache__",
+        "src\\health\\__pycache__"
+      ],
+      "pyc_files": [
+        "src\\chat\\__pycache__\\langgraph_chat_handler.cpython-312.pyc",
+        "src\\health\\__pycache__\\health.cpython-312.pyc"
+      ],
+      "temp_files": [
+        "frontend\\node_modules\\nwsapi\\dist\\lint.log"
+      ]
+    },
+    "repository_structure": {
+      "status": "PASSED",
+      "missing_directories": [],
+      "missing_files": [],
+      "total_dirs_checked": 6,
+      "total_files_checked": 5
+    }
+  },
+  "summary": {
+    "total_checks": 3,
+    "passed_checks": 3,
+    "failed_checks": 0,
+    "warnings": 1
+  }
+}

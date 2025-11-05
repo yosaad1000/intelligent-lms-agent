@@ -77,45 +77,105 @@ graph LR
 ## 🚀 **Quick Start & Deployment**
 
 ### 📋 **Prerequisites**
-- **AWS Account**: Admin access with Bedrock enabled
+- **AWS Account**: Admin access with Bedrock enabled in us-east-1
 - **Python 3.9+**: For local development and testing
-- **AWS CLI**: Configured with admin credentials
-- **Pinecone Account**: For cost-effective vector storage
+- **AWS CLI**: Version 2.x configured with admin credentials
+- **AWS SAM CLI**: Latest version for serverless deployment
+- **Pinecone Account**: For cost-effective vector storage (80% savings vs OpenSearch)
 
-### ⚡ **One-Command Deployment**
+### ⚡ **5-Minute Deployment**
+
+#### Step 1: Clone and Configure
 ```bash
 # Clone the repository
 git clone https://github.com/yosaad1000/intelligent-lms-agent.git
 cd intelligent-lms-agent
 
-# Set up environment
+# Copy environment template
 cp .env.example .env
-# Edit .env with your AWS and Pinecone credentials
-
-# Deploy complete infrastructure
-sam build && sam deploy --guided
-
-# Test the deployed agent
-python test_deployed_agent.py
 ```
 
-### 🔧 **Environment Configuration**
+#### Step 2: Environment Setup
+Edit `.env` with your credentials:
 ```bash
-# Required environment variables
+# AWS Configuration
 AWS_REGION=us-east-1
-PINECONE_API_KEY=your-pinecone-api-key
+AWS_ACCOUNT_ID=123456789012
+
+# Pinecone Configuration (Required for vector storage)
+PINECONE_API_KEY=your-pinecone-api-key-here
 PINECONE_ENVIRONMENT=us-east-1-aws
-BEDROCK_AGENT_ID=auto-generated-after-deployment
+PINECONE_INDEX_NAME=lms-knowledge-base
+
+# Bedrock Configuration (Auto-generated after deployment)
+BEDROCK_AGENT_ID=will-be-generated
 BEDROCK_AGENT_ALIAS=production
+BEDROCK_KB_ID=will-be-generated
+
+# Optional: Supabase for Authentication (Development)
+SUPABASE_URL=your-supabase-url
+SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+#### Step 3: One-Command Deployment
+```bash
+# Build and deploy complete infrastructure
+sam build && sam deploy --guided
+
+# Follow the prompts:
+# Stack Name: lms-ai-agent-prod
+# AWS Region: us-east-1
+# Confirm changes: Y
+# Allow IAM role creation: Y
+# Save parameters: Y
+```
+
+#### Step 4: Post-Deployment Setup
+```bash
+# Create Bedrock Agent and Knowledge Base
+python scripts/create_bedrock_agent.py
+
+# Set up Pinecone vector database
+python scripts/setup_pinecone.py
+
+# Upload sample documents
+python scripts/upload_sample_docs.py
+
+# Test the deployed system
+python scripts/test_deployed_agent.py
 ```
 
 ### 🎯 **Deployment Verification**
-After deployment, verify your system:
-1. **Bedrock Agent**: Test via AWS Console
-2. **Knowledge Base**: Upload test documents
-3. **API Endpoints**: Run integration tests
-4. **Voice Processing**: Test WebSocket connections
-5. **Analytics**: Verify data collection
+
+Run the comprehensive verification script:
+```bash
+python scripts/deployment_verification.py
+```
+
+**Expected Output:**
+```
+🧪 Deployment Verification Report
+==================================================
+Tests Passed: 8/8
+Success Rate: 100.0%
+Timestamp: 2024-01-01T12:00:00Z
+
+✅ Bedrock Agent: PASSED
+✅ Knowledge Base: PASSED
+✅ API Endpoints: PASSED
+✅ File Upload: PASSED
+✅ Document Processing: PASSED
+✅ Quiz Generation: PASSED
+✅ Voice Processing: PASSED
+✅ Analytics Tracking: PASSED
+```
+
+### 🔧 **Manual Verification Steps**
+1. **AWS Console**: Check Bedrock Agent in AWS Console
+2. **API Health**: `curl https://your-api-url/health`
+3. **Chat Test**: Use the web interface at `tests/integration/interfaces/test_enhanced_agent_interface.html`
+4. **File Upload**: Test document upload and processing
+5. **Voice Interview**: Try voice interview functionality
 
 ## 📁 **Production-Ready Project Structure**
 ```
@@ -136,7 +196,7 @@ intelligent-lms-agent/
 ├── 🧪 Comprehensive Testing
 │   ├── tests/unit/                      # Unit tests for all components
 │   ├── tests/integration/               # End-to-end integration tests
-│   ├── test_*_interface.html           # Manual testing interfaces
+│   ├── tests/integration/interfaces/   # Manual testing interfaces
 │   └── test_*.py                       # Automated test suites
 ├── 🚀 Infrastructure & Deployment
 │   ├── template.yaml                    # AWS SAM template
@@ -300,9 +360,9 @@ python test_deployed_agent.py
 ```
 
 ### 4️⃣ **Explore Features**
-- Open `test_enhanced_agent_interface.html` for web testing
-- Try voice interviews with `test_voice_interview_interface.html`
-- Check analytics with `test_learning_analytics_interface.html`
+- Open `tests/integration/interfaces/test_enhanced_agent_interface.html` for web testing
+- Try voice interviews with `tests/integration/interfaces/test_voice_interview_interface.html`
+- Check analytics with `tests/integration/interfaces/test_learning_analytics_interface.html`
 
 ## 🏆 **Awards & Recognition**
 
@@ -359,7 +419,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🎉 **Ready to Experience the Future of AI-Powered Learning?**
 
-**🚀 [Deploy Now](https://github.com/yosaad1000/intelligent-lms-agent) | 📊 [View Architecture](LMS_COMPLETE_ARCHITECTURE.md) | 🎤 [Try Voice Demo](test_voice_interview_interface.html)**
+**🚀 [Deploy Now](https://github.com/yosaad1000/intelligent-lms-agent) | 📊 [View Architecture](LMS_COMPLETE_ARCHITECTURE.md) | 🎤 [Try Voice Demo](tests/integration/interfaces/test_voice_interview_interface.html)**
 
 ---
 **🏆 Built for AWS Agentic Hackathon 2025 - Showcasing Production-Ready AI Innovation** 🚀

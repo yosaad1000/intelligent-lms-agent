@@ -11,7 +11,7 @@ Your friend now has **COMPLETE ACCESS** to test all features including the live 
 ### 1. **Clone & Install**
 ```bash
 git clone https://github.com/yosaad1000/intelligent-lms-agent.git
-cd intelligent-lms-agent/frontend_extracted/frontend
+cd intelligent-lms-agent/frontend
 npm install
 ```
 

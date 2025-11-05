@@ -163,3 +163,16 @@ Thumbs.db
 *.bak
 *.backup
 *~
+
+# Kiro IDE files
+.kiro/
+
+# AWS SAM build artifacts
+.aws-sam/
+
+# Additional temporary and build files
+*.zip
+temp_lambda/
+temp_lambda_fix/
+temp_lambda_package/
+packaged-template.yaml
